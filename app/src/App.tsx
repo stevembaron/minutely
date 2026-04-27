@@ -13,25 +13,31 @@ export default function App() {
   const [scenario, setScenario] = useState<ScenarioKey>('rain_clearing');
   const [forecast, setForecast] = useState<MinuteForecast[]>(() => buildForecast('rain_clearing'));
   const [location, setLocation] = useState('San Francisco, CA');
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(
+    { lat: 37.7749, lng: -122.4194 }
+  );
   const [tempOffset, setTempOffset] = useState(0);
   const [settings, setSettings] = useState<Settings>({ tempUnit: '°F', windUnit: 'mph', alertRain: true, alertClear: true, alertWorsen: false });
   const [exiting, setExiting] = useState(false);
   const [usingLive, setUsingLive] = useState(false);
 
-  // Try to fetch live data for the selected location
-  useEffect(() => {
-    const loc = DEFAULT_LOCATIONS.find(l => `${l.city}, ${l.state}` === location);
-    if (!loc) { setUsingLive(false); return; }
+  const selectLocation = (name: string, lat: number, lng: number) => {
+    setLocation(name);
+    setLocationCoords({ lat, lng });
+  };
 
+  // Try to fetch live data whenever coords change
+  useEffect(() => {
+    if (!locationCoords) { setUsingLive(false); return; }
     let cancelled = false;
-    fetchMinuteForecast(loc.lat, loc.lng).then(data => {
+    fetchMinuteForecast(locationCoords.lat, locationCoords.lng).then(data => {
       if (cancelled || !data) return;
       setForecast(data);
       setNowMin(0);
       setUsingLive(true);
     });
     return () => { cancelled = true; };
-  }, [location]);
+  }, [locationCoords]);
 
   const navigate = (to: Screen) => {
     setExiting(true);
@@ -77,7 +83,7 @@ export default function App() {
           <LocationScreen
             onBack={() => navigate('settings')}
             location={location}
-            setLocation={(loc) => { setLocation(loc); }}
+            selectLocation={selectLocation}
           />
         )}
         {screen === 'admin' && (
@@ -89,7 +95,7 @@ export default function App() {
             setNowMin={setNowMin}
             onRebuild={rebuildForecast}
             location={location}
-            setLocation={setLocation}
+            setLocation={(loc) => { setLocation(loc); setLocationCoords(null); }}
             tempOffset={tempOffset}
             setTempOffset={setTempOffset}
           />

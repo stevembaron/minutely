@@ -146,6 +146,34 @@ export async function fetchMinuteForecast(lat: number, lng: number): Promise<Min
   }
 }
 
+// ── GEOCODING ─────────────────────────────────────────────────────────────
+export interface GeoResult {
+  name: string;
+  admin1: string;   // state / region
+  country: string;
+  lat: number;
+  lng: number;
+}
+
+export async function searchLocations(query: string): Promise<GeoResult[]> {
+  if (!query.trim()) return [];
+  try {
+    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=8&language=en&format=json`;
+    const res = await fetch(url);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.results ?? []).map((r: { name: string; admin1?: string; country: string; latitude: number; longitude: number }) => ({
+      name: r.name,
+      admin1: r.admin1 ?? '',
+      country: r.country,
+      lat: r.latitude,
+      lng: r.longitude,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 // ── KNOWN LOCATIONS ────────────────────────────────────────────────────────
 export const DEFAULT_LOCATIONS: LocationInfo[] = [
   { city: 'San Francisco', state: 'CA', lat: 37.7749, lng: -122.4194, temp: 58, condition: 'clear' },

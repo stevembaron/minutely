@@ -1,33 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { CondIcon } from '../components/Icons';
-import { DEFAULT_LOCATIONS, getStyle, CONDITION_STYLE } from '../weather';
+import { DEFAULT_LOCATIONS, getStyle, CONDITION_STYLE, searchLocations } from '../weather';
+import type { GeoResult } from '../weather';
+
+interface SavedLocation {
+  name: string;
+  lat: number;
+  lng: number;
+}
 
 interface Props {
   onBack: () => void;
   location: string;
-  setLocation: (loc: string) => void;
+  selectLocation: (name: string, lat: number, lng: number) => void;
 }
 
-export function LocationScreen({ onBack, location, setLocation }: Props) {
+export function LocationScreen({ onBack, location, selectLocation }: Props) {
   const [query, setQuery] = useState('');
-  const [saved, setSaved] = useState(['San Francisco, CA', 'New York, NY']);
+  const [saved, setSaved] = useState<SavedLocation[]>([
+    { name: 'San Francisco, CA', lat: 37.7749, lng: -122.4194 },
+    { name: 'New York, NY',      lat: 40.7128, lng: -74.0060 },
+  ]);
+  const [geoResults, setGeoResults] = useState<GeoResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const filtered = DEFAULT_LOCATIONS.filter(l =>
-    `${l.city} ${l.state}`.toLowerCase().includes(query.toLowerCase())
-  );
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!query.trim()) { setGeoResults([]); setSearching(false); return; }
 
-  const pick = (city: string, state: string) => {
-    const full = `${city}, ${state}`;
-    if (!saved.includes(full)) setSaved(s => [full, ...s]);
-    setLocation(full);
+    setSearching(true);
+    debounceRef.current = setTimeout(async () => {
+      const results = await searchLocations(query);
+      setGeoResults(results);
+      setSearching(false);
+    }, 350);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query]);
+
+  const pick = (name: string, lat: number, lng: number) => {
+    if (!saved.find(s => s.name === name)) {
+      setSaved(s => [{ name, lat, lng }, ...s]);
+    }
+    selectLocation(name, lat, lng);
     onBack();
   };
 
-  const removeSaved = (e: React.MouseEvent, loc: string) => {
+  const removeSaved = (e: React.MouseEvent, name: string) => {
     e.stopPropagation();
-    setSaved(s => s.filter(x => x !== loc));
-    if (location === loc) setLocation('San Francisco, CA');
+    setSaved(s => s.filter(x => x.name !== name));
   };
+
+  const formatGeoName = (r: GeoResult) =>
+    r.admin1 ? `${r.name}, ${r.admin1}, ${r.country}` : `${r.name}, ${r.country}`;
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#f7f5f2', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -48,7 +74,8 @@ export function LocationScreen({ onBack, location, setLocation }: Props) {
           <input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search cities…"
+            placeholder="Search any city…"
+            autoFocus
             style={{
               width: '100%', padding: '10px 12px 10px 34px',
               background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: 10,
@@ -68,10 +95,52 @@ export function LocationScreen({ onBack, location, setLocation }: Props) {
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 24px' }}>
 
-        {!query && (
+        {/* Search results */}
+        {query ? (
           <>
+            <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, margin: '18px 0 8px' }}>
+              {searching ? 'Searching…' : geoResults.length > 0 ? `Results for "${query}"` : 'No results'}
+            </div>
+            {geoResults.length > 0 && (
+              <div style={{ background: '#fff', borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+                {geoResults.map((r, i) => {
+                  const name = formatGeoName(r);
+                  const isActive = location === name;
+                  return (
+                    <div key={`${r.lat},${r.lng}`} onClick={() => pick(name, r.lat, r.lng)} style={{
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', cursor: 'pointer',
+                      borderBottom: i < geoResults.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                      background: isActive ? '#f7fbf8' : 'transparent',
+                      transition: 'background 0.12s',
+                    }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
+                        <div style={{ fontSize: 12, color: '#aaa', marginTop: 1 }}>{r.admin1 ? `${r.admin1}, ` : ''}{r.country}</div>
+                      </div>
+                      {isActive
+                        ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3d9e5f" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+                      }
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            {/* Use My Location */}
             <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, margin: '18px 0 8px' }}>Current location</div>
-            <div onClick={() => { setLocation('Current Location'); onBack(); }} style={{
+            <div onClick={() => {
+              if (!navigator.geolocation) return;
+              navigator.geolocation.getCurrentPosition(pos => {
+                selectLocation('My Location', pos.coords.latitude, pos.coords.longitude);
+                onBack();
+              });
+            }} style={{
               background: '#fff', borderRadius: 12, border: '1.5px solid #3d9e5f33',
               padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
             }}>
@@ -84,73 +153,69 @@ export function LocationScreen({ onBack, location, setLocation }: Props) {
               </div>
               <svg style={{ marginLeft: 'auto' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
             </div>
-          </>
-        )}
 
-        {!query && saved.length > 0 && (
-          <>
-            <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, margin: '18px 0 8px' }}>Saved</div>
+            {/* Saved */}
+            {saved.length > 0 && (
+              <>
+                <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, margin: '18px 0 8px' }}>Saved</div>
+                <div style={{ background: '#fff', borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+                  {saved.map((s, i) => {
+                    const match = DEFAULT_LOCATIONS.find(l => `${l.city}, ${l.state}` === s.name);
+                    const isActive = location === s.name;
+                    return (
+                      <div key={s.name} onClick={() => { selectLocation(s.name, s.lat, s.lng); onBack(); }} style={{
+                        display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', cursor: 'pointer',
+                        borderBottom: i < saved.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                        background: isActive ? '#f7fbf8' : 'transparent',
+                      }}>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: match?.condition ? getStyle(match.condition, 0).barColor : '#ccc', flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 14, fontWeight: isActive ? 600 : 400, color: '#1a1a1a' }}>{s.name}</div>
+                          {match?.condition && <div style={{ fontSize: 12, color: '#aaa', marginTop: 1 }}>{match.temp}° · {CONDITION_STYLE[match.condition]?.label}</div>}
+                        </div>
+                        {isActive && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3d9e5f" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                        <button onClick={e => removeSaved(e, s.name)} style={{
+                          background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%',
+                          width: 22, height: 22, cursor: 'pointer', color: '#888', fontSize: 12,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>✕</button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* Popular cities */}
+            <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, margin: '18px 0 8px' }}>Popular cities</div>
             <div style={{ background: '#fff', borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-              {saved.map((loc, i) => {
-                const match = DEFAULT_LOCATIONS.find(l => `${l.city}, ${l.state}` === loc);
-                const isActive = location === loc;
+              {DEFAULT_LOCATIONS.map((loc, i) => {
+                const full = `${loc.city}, ${loc.state}`;
+                const isActive = location === full;
+                const cs = getStyle(loc.condition!, 0.5);
                 return (
-                  <div key={loc} onClick={() => { setLocation(loc); onBack(); }} style={{
+                  <div key={full} onClick={() => pick(full, loc.lat, loc.lng)} style={{
                     display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', cursor: 'pointer',
-                    borderBottom: i < saved.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                    borderBottom: i < DEFAULT_LOCATIONS.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
                     background: isActive ? '#f7fbf8' : 'transparent',
+                    transition: 'background 0.12s',
                   }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: match?.condition ? getStyle(match.condition, 0).barColor : '#ccc', flexShrink: 0 }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: isActive ? 600 : 400, color: '#1a1a1a' }}>{loc}</div>
-                      {match?.condition && <div style={{ fontSize: 12, color: '#aaa', marginTop: 1 }}>{match.temp}° · {CONDITION_STYLE[match.condition]?.label}</div>}
+                    <div style={{ width: 34, height: 34, borderRadius: 10, background: cs.barColor + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <CondIcon condition={loc.condition!} size={16} color={cs.accent} />
                     </div>
-                    {isActive && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3d9e5f" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                    <button onClick={e => removeSaved(e, loc)} style={{
-                      background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '50%',
-                      width: 22, height: 22, cursor: 'pointer', color: '#888', fontSize: 12,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>✕</button>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a' }}>{loc.city}, {loc.state}</div>
+                      <div style={{ fontSize: 12, color: '#aaa', marginTop: 1 }}>{loc.temp}° · {cs.label}</div>
+                    </div>
+                    {isActive
+                      ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3d9e5f" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+                    }
                   </div>
                 );
               })}
             </div>
           </>
-        )}
-
-        <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, margin: '18px 0 8px' }}>
-          {query ? `Results for "${query}"` : 'Popular cities'}
-        </div>
-        {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '30px 0', color: '#bbb', fontSize: 14 }}>No cities found</div>
-        ) : (
-          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-            {filtered.map((loc, i) => {
-              const full = `${loc.city}, ${loc.state}`;
-              const isActive = location === full;
-              const cs = getStyle(loc.condition!, 0.5);
-              return (
-                <div key={full} onClick={() => pick(loc.city, loc.state)} style={{
-                  display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', cursor: 'pointer',
-                  borderBottom: i < filtered.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
-                  background: isActive ? '#f7fbf8' : 'transparent',
-                  transition: 'background 0.12s',
-                }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 10, background: cs.barColor + '18', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <CondIcon condition={loc.condition!} size={16} color={cs.accent} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a' }}>{loc.city}, {loc.state}</div>
-                    <div style={{ fontSize: 12, color: '#aaa', marginTop: 1 }}>{loc.temp}° · {cs.label}</div>
-                  </div>
-                  {isActive
-                    ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3d9e5f" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ccc" strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
-                  }
-                </div>
-              );
-            })}
-          </div>
         )}
       </div>
     </div>
