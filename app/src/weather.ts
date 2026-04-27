@@ -87,15 +87,21 @@ export function buildForecast(key: ScenarioKey = 'rain_clearing'): MinuteForecas
 const API_KEY = 'pPrBGDNcJMvdc6hKoEMc6sl13R44I0UE';
 
 function mmToIntensity(mmPerHour: number): number {
-  // 0–0.5 → 0, 0.5–2.5 → drizzle range, 2.5–7.6 → rain, 7.6+ → heavy
   return Math.min(1, mmPerHour / 10);
 }
 
 function intensityToCondition(mmPerHour: number): Condition {
-  if (mmPerHour < 0.3) return 'clear';
-  if (mmPerHour < 1.5) return 'drizzle';
-  if (mmPerHour < 5)   return 'clearing';
+  if (mmPerHour < 0.1)  return 'clear';
+  if (mmPerHour < 2.5)  return 'drizzle';
   return 'rain';
+}
+
+// Map Pirate Weather / Dark Sky icon strings to our Condition type
+function iconToCondition(icon: string, precipMm: number): Condition {
+  if (icon === 'rain' || icon === 'sleet')          return precipMm < 2.5 ? 'drizzle' : 'rain';
+  if (icon === 'cloudy' || icon === 'fog')          return 'clearing';
+  if (icon === 'partly-cloudy-day' || icon === 'partly-cloudy-night') return 'clearing';
+  return intensityToCondition(precipMm);
 }
 
 function celsiusToFahrenheit(c: number): number {
@@ -111,19 +117,25 @@ export async function fetchMinuteForecast(lat: number, lng: number): Promise<Min
 
     const currentTempC: number = data.currently?.temperature ?? 15;
     const currentTempF = celsiusToFahrenheit(currentTempC);
+    const currentIcon: string = data.currently?.icon ?? '';
+    const currentPrecip: number = data.currently?.precipIntensity ?? 0;
+
+    // Use the API's own icon for the current condition — it's more reliable than
+    // intensity thresholds alone, which often read near-zero during light rain.
+    const currentCondition = iconToCondition(currentIcon, currentPrecip);
 
     // minutely data if available
     if (data.minutely?.data && data.minutely.data.length >= 60) {
-      return data.minutely.data.slice(0, 60).map((m: { precipIntensity: number; temperature?: number }, i: number) => {
+      return data.minutely.data.slice(0, 60).map((m: { precipIntensity: number; precipProbability?: number }, i: number) => {
         const mmPerHour = m.precipIntensity ?? 0;
-        const condition = intensityToCondition(mmPerHour);
-        // temp changes gradually from current; minutely doesn't include temp
+        // For minute 0, trust the current icon; beyond that use intensity
+        const condition = i === 0 ? currentCondition : intensityToCondition(mmPerHour);
         const temp = currentTempF + i * 0.05;
-        return { minute: i, precip: mmToIntensity(mmPerHour), condition, temp };
+        return { minute: i, precip: Math.max(mmToIntensity(mmPerHour), i === 0 ? mmToIntensity(currentPrecip) : 0), condition, temp };
       });
     }
 
-    // fall back to hourly interpolation
+    // Fall back to hourly interpolation, anchored to the current icon
     if (data.hourly?.data && data.hourly.data.length >= 2) {
       const h0 = data.hourly.data[0];
       const h1 = data.hourly.data[1];
@@ -131,17 +143,19 @@ export async function fetchMinuteForecast(lat: number, lng: number): Promise<Min
         const t = i / 60;
         const precip = (h0.precipIntensity ?? 0) * (1 - t) + (h1.precipIntensity ?? 0) * t;
         const tempC = (h0.temperature ?? currentTempC) * (1 - t) + (h1.temperature ?? currentTempC) * t;
+        const condition = i === 0 ? currentCondition : intensityToCondition(precip);
         return {
           minute: i,
-          precip: mmToIntensity(precip),
-          condition: intensityToCondition(precip),
+          precip: mmToIntensity(i === 0 ? Math.max(precip, currentPrecip) : precip),
+          condition,
           temp: celsiusToFahrenheit(tempC),
         };
       });
     }
 
     return null;
-  } catch {
+  } catch (err) {
+    console.error('Pirate Weather error:', err);
     return null;
   }
 }
