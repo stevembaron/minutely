@@ -32,12 +32,21 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
   })();
 
   const nextEvent = (() => {
-    if (current.condition === 'clear') return 'Clear skies for the rest of the hour';
+    // Look ahead from current minute for any condition change
     for (let i = nowMin + 1; i < 60; i++) {
-      if (forecast[i].condition === 'clear' || forecast[i].condition === 'clearing') {
-        return `Clears up in ${i - nowMin} min`;
+      const cond = forecast[i].condition;
+      if (current.condition === 'clear' || current.condition === 'clearing') {
+        if (cond === 'drizzle' || cond === 'rain') {
+          const label = cond === 'rain' ? 'Rain' : 'Drizzle';
+          return `${label} starting in ${i - nowMin} min`;
+        }
+      } else {
+        if (cond === 'clear' || cond === 'clearing') {
+          return `Clears up in ${i - nowMin} min`;
+        }
       }
     }
+    if (current.condition === 'clear' || current.condition === 'clearing') return 'Clear skies for the rest of the hour';
     return 'Rain continues through the hour';
   })();
 
