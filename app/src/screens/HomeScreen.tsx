@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { CondIcon } from '../components/Icons';
 import { getStyle, timeLabel } from '../weather';
-import type { MinuteForecast } from '../types';
+import type { MinuteForecast, CurrentConditions } from '../types';
 
 interface Props {
   onSettings: () => void;
@@ -9,9 +9,10 @@ interface Props {
   setNowMin: (n: number) => void;
   forecast: MinuteForecast[];
   location: string;
+  currentConditions: CurrentConditions | null;
 }
 
-export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location }: Props) {
+export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, currentConditions }: Props) {
   const current = forecast[nowMin];
   const cs = getStyle(current.condition, current.precip);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -48,9 +49,11 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location }
     setNowMin(Math.round(pct * 59));
   }, [setNowMin]);
 
-  const feelsLike = Math.round(current.temp - current.precip * 5);
-  const wind = current.condition === 'rain' ? 14 : current.condition === 'drizzle' ? 8 : 4;
-  const humidity = current.condition === 'rain' ? 91 : current.condition === 'drizzle' ? 79 : 54;
+  const feelsLike = currentConditions?.feelsLike ?? Math.round(current.temp - current.precip * 5);
+  const wind      = currentConditions?.windSpeed  ?? (current.condition === 'rain' ? 14 : current.condition === 'drizzle' ? 8 : 4);
+  const humidity  = currentConditions?.humidity   ?? (current.condition === 'rain' ? 91 : current.condition === 'drizzle' ? 79 : 54);
+  const uvIndex   = currentConditions?.uvIndex    ?? (current.condition === 'clear' ? 4 : 1);
+  const visibility = currentConditions?.visibility ?? (current.condition === 'rain' ? 1 : 10);
 
   const condLabelMap: Record<string, string> = { rain: 'Rain', drizzle: 'Drizzle', clearing: 'Clearing', clear: 'Clear' };
   const descMap: Record<string, string> = { rain: 'Keep an umbrella handy', drizzle: 'Light mist in the air', clearing: 'Skies brightening', clear: 'Great time to head out' };
@@ -112,7 +115,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location }
             <span style={{ fontSize: 44, fontWeight: 300, verticalAlign: 'top', marginTop: 12, display: 'inline-block' }}>°F</span>
           </div>
           <div style={{ color: '#888', fontSize: 13, marginTop: 5, fontWeight: 400 }}>
-            Feels {feelsLike}° · {humidity}% humidity
+            Feels like {feelsLike}° · {humidity}% humidity
           </div>
         </div>
         <div style={{ paddingTop: 28, opacity: 0.8 }}>
@@ -239,8 +242,8 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location }
         {[
           { label: 'Wind',  value: `${wind} mph` },
           { label: 'Humid', value: `${humidity}%` },
-          { label: 'UV',    value: current.condition === 'clear' ? '4 mod' : '1 low' },
-          { label: 'Vis',   value: current.condition === 'rain' ? '0.5mi' : '10mi' },
+          { label: 'UV',    value: uvIndex <= 2 ? `${uvIndex} low` : uvIndex <= 5 ? `${uvIndex} mod` : `${uvIndex} high` },
+          { label: 'Vis',   value: `${visibility}mi` },
         ].map((s, i, arr) => (
           <div key={s.label} style={{
             flex: 1, textAlign: 'center',

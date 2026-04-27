@@ -1,4 +1,4 @@
-import type { Condition, MinuteForecast, LocationInfo, ScenarioKey } from './types';
+import type { Condition, MinuteForecast, LocationInfo, ScenarioKey, CurrentConditions } from './types';
 
 // ── COLOR / STYLE SYSTEM ───────────────────────────────────────────────────
 export const CONDITION_STYLE: Record<Condition, { barColor: string; accent: string; bg: string; textAccent: string; label: string }> = {
@@ -108,52 +108,57 @@ function celsiusToFahrenheit(c: number): number {
   return c * 9 / 5 + 32;
 }
 
-export async function fetchMinuteForecast(lat: number, lng: number): Promise<MinuteForecast[] | null> {
+export interface LiveData {
+  forecast: MinuteForecast[];
+  current: CurrentConditions;
+}
+
+function kphToMph(kph: number): number { return kph * 0.621371; }
+function kmToMiles(km: number): number { return km * 0.621371; }
+
+export async function fetchLiveData(lat: number, lng: number): Promise<LiveData | null> {
   try {
     const url = `https://api.pirateweather.net/forecast/${API_KEY}/${lat},${lng}?exclude=daily,alerts&units=ca`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
 
-    const currentTempC: number = data.currently?.temperature ?? 15;
+    const c = data.currently ?? {};
+    const currentTempC: number = c.temperature ?? 15;
     const currentTempF = celsiusToFahrenheit(currentTempC);
-    const currentIcon: string = data.currently?.icon ?? '';
-    const currentPrecip: number = data.currently?.precipIntensity ?? 0;
-
-    // Use the API's own icon for the current condition — it's more reliable than
-    // intensity thresholds alone, which often read near-zero during light rain.
+    const currentIcon: string = c.icon ?? '';
+    const currentPrecip: number = c.precipIntensity ?? 0;
     const currentCondition = iconToCondition(currentIcon, currentPrecip);
 
-    // minutely data if available
-    if (data.minutely?.data && data.minutely.data.length >= 60) {
-      return data.minutely.data.slice(0, 60).map((m: { precipIntensity: number; precipProbability?: number }, i: number) => {
-        const mmPerHour = m.precipIntensity ?? 0;
-        // For minute 0, trust the current icon; beyond that use intensity
-        const condition = i === 0 ? currentCondition : intensityToCondition(mmPerHour);
-        const temp = currentTempF + i * 0.05;
-        return { minute: i, precip: Math.max(mmToIntensity(mmPerHour), i === 0 ? mmToIntensity(currentPrecip) : 0), condition, temp };
-      });
-    }
+    const current: CurrentConditions = {
+      windSpeed: Math.round(kphToMph(c.windSpeed ?? 0)),
+      humidity:  Math.round((c.humidity ?? 0.5) * 100),
+      uvIndex:   Math.round(c.uvIndex ?? 0),
+      visibility: Math.round(kmToMiles(c.visibility ?? 16)),
+      feelsLike: Math.round(celsiusToFahrenheit(c.apparentTemperature ?? currentTempC)),
+    };
 
-    // Fall back to hourly interpolation, anchored to the current icon
-    if (data.hourly?.data && data.hourly.data.length >= 2) {
+    let forecast: MinuteForecast[] | null = null;
+
+    if (data.minutely?.data && data.minutely.data.length >= 60) {
+      forecast = data.minutely.data.slice(0, 60).map((m: { precipIntensity: number }, i: number) => {
+        const mmPerHour = m.precipIntensity ?? 0;
+        const condition = i === 0 ? currentCondition : intensityToCondition(mmPerHour);
+        return { minute: i, precip: Math.max(mmToIntensity(mmPerHour), i === 0 ? mmToIntensity(currentPrecip) : 0), condition, temp: currentTempF + i * 0.05 };
+      });
+    } else if (data.hourly?.data && data.hourly.data.length >= 2) {
       const h0 = data.hourly.data[0];
       const h1 = data.hourly.data[1];
-      return Array.from({ length: 60 }, (_, i) => {
+      forecast = Array.from({ length: 60 }, (_, i) => {
         const t = i / 60;
         const precip = (h0.precipIntensity ?? 0) * (1 - t) + (h1.precipIntensity ?? 0) * t;
         const tempC = (h0.temperature ?? currentTempC) * (1 - t) + (h1.temperature ?? currentTempC) * t;
-        const condition = i === 0 ? currentCondition : intensityToCondition(precip);
-        return {
-          minute: i,
-          precip: mmToIntensity(i === 0 ? Math.max(precip, currentPrecip) : precip),
-          condition,
-          temp: celsiusToFahrenheit(tempC),
-        };
+        return { minute: i, precip: mmToIntensity(i === 0 ? Math.max(precip, currentPrecip) : precip), condition: i === 0 ? currentCondition : intensityToCondition(precip), temp: celsiusToFahrenheit(tempC) };
       });
     }
 
-    return null;
+    if (!forecast) return null;
+    return { forecast, current };
   } catch (err) {
     console.error('Pirate Weather error:', err);
     return null;

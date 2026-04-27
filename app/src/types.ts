@@ -7,6 +7,14 @@ export interface MinuteForecast {
   temp: number;   // °F
 }
 
+export interface CurrentConditions {
+  windSpeed: number;   // mph
+  humidity: number;    // 0–100
+  uvIndex: number;
+  visibility: number;  // miles
+  feelsLike: number;   // °F
+}
+
 export interface LocationInfo {
   city: string;
   state: string;

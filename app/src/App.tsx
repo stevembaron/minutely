@@ -4,8 +4,8 @@ import { HomeScreen } from './screens/HomeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { LocationScreen } from './screens/LocationScreen';
 import { AdminScreen } from './screens/AdminScreen';
-import { buildForecast, fetchMinuteForecast, DEFAULT_LOCATIONS } from './weather';
-import type { Screen, ScenarioKey, Settings, MinuteForecast } from './types';
+import { buildForecast, fetchLiveData } from './weather';
+import type { Screen, ScenarioKey, Settings, MinuteForecast, CurrentConditions } from './types';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
@@ -18,6 +18,7 @@ export default function App() {
   );
   const [tempOffset, setTempOffset] = useState(0);
   const [settings, setSettings] = useState<Settings>({ tempUnit: '°F', windUnit: 'mph', alertRain: true, alertClear: true, alertWorsen: false });
+  const [currentConditions, setCurrentConditions] = useState<CurrentConditions | null>(null);
   const [exiting, setExiting] = useState(false);
   const [usingLive, setUsingLive] = useState(false);
 
@@ -26,13 +27,14 @@ export default function App() {
     setLocationCoords({ lat, lng });
   };
 
-  // Try to fetch live data whenever coords change
+  // Fetch live data whenever coords change
   useEffect(() => {
     if (!locationCoords) { setUsingLive(false); return; }
     let cancelled = false;
-    fetchMinuteForecast(locationCoords.lat, locationCoords.lng).then(data => {
-      if (cancelled || !data) return;
-      setForecast(data);
+    fetchLiveData(locationCoords.lat, locationCoords.lng).then(result => {
+      if (cancelled || !result) return;
+      setForecast(result.forecast);
+      setCurrentConditions(result.current);
       setNowMin(0);
       setUsingLive(true);
     });
@@ -67,6 +69,7 @@ export default function App() {
             setNowMin={setNowMin}
             forecast={adjustedForecast}
             location={location}
+            currentConditions={currentConditions}
           />
         )}
         {screen === 'settings' && (
