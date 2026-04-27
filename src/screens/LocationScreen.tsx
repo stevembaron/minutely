@@ -65,7 +65,7 @@ export function LocationScreen({ onBack, location, selectLocation }: Props) {
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#f7f5f2', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: '62px 20px 14px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+      <div style={{ padding: 'max(env(safe-area-inset-top), 20px) 20px 14px', background: '#fff', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
           <button onClick={onBack} style={{
             background: 'none', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 20,

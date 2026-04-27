@@ -30,7 +30,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 export function AdminScreen({ onBack, scenario, setScenario, nowMin, setNowMin, onRebuild, location, setLocation, tempOffset, setTempOffset }: Props) {
   return (
     <div style={{ width: '100%', height: '100%', background: '#f2f0ed', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: '62px 20px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(0,0,0,0.08)', background: '#fff' }}>
+      <div style={{ padding: 'max(env(safe-area-inset-top), 20px) 20px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(0,0,0,0.08)', background: '#fff' }}>
         <button onClick={onBack} style={{
           background: 'none', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 20,
           padding: '5px 12px', color: '#555', cursor: 'pointer', fontFamily: 'inherit',

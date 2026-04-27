@@ -77,7 +77,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
     }}>
 
       {/* HEADER */}
-      <div style={{ padding: '62px 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+      <div style={{ padding: 'max(env(safe-area-inset-top), 20px) 20px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <div style={{ fontSize: 11, color: '#999', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500 }}>Now in</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#1a1a1a', letterSpacing: '-0.02em', marginTop: 1 }}>

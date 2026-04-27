@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { IOSDevice } from './components/IOSDevice';
 import { HomeScreen } from './screens/HomeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
@@ -54,8 +54,11 @@ export default function App() {
 
   const adjustedForecast = forecast.map(m => ({ ...m, temp: m.temp + tempOffset }));
 
-  return (
-    <IOSDevice dark={false}>
+  // On small screens show full-screen; on large screens show inside iOS frame
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 480;
+  const frameRef = useRef<HTMLDivElement>(null);
+
+  const content = (
       <div style={{
         width: '100%', height: '100%', overflow: 'hidden',
         opacity: exiting ? 0 : 1,
@@ -105,13 +108,26 @@ export default function App() {
         )}
         {usingLive && (
           <div style={{
-            position: 'fixed', bottom: 50, left: '50%', transform: 'translateX(-50%)',
+            position: 'absolute', bottom: 50, left: '50%', transform: 'translateX(-50%)',
             background: '#3d9e5f', color: '#fff', fontSize: 10, fontWeight: 600,
             padding: '3px 10px', borderRadius: 20, letterSpacing: '0.06em',
             pointerEvents: 'none', zIndex: 999,
           }}>LIVE</div>
         )}
       </div>
+  );
+
+  if (isMobile) {
+    return (
+      <div ref={frameRef} style={{ width: '100vw', height: '100dvh', overflow: 'hidden', fontFamily: 'DM Sans, sans-serif' }}>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <IOSDevice dark={false}>
+      {content}
     </IOSDevice>
   );
 }

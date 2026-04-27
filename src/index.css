@@ -8,6 +8,11 @@ html, body {
 }
 #root { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
 
+@media (max-width: 480px) {
+  html, body { background: #f7f5f2; }
+  #root { align-items: flex-start; }
+}
+
 @keyframes nowBlink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.4; }
