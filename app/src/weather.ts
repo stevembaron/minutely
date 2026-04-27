@@ -158,20 +158,36 @@ export interface GeoResult {
 export async function searchLocations(query: string): Promise<GeoResult[]> {
   if (!query.trim()) return [];
   try {
-    const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=8&language=en&format=json`;
-    const res = await fetch(url);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return (data.results ?? []).map((r: { name: string; admin1?: string; country: string; latitude: number; longitude: number }) => ({
-      name: r.name,
-      admin1: r.admin1 ?? '',
-      country: r.country,
-      lat: r.latitude,
-      lng: r.longitude,
-    }));
-  } catch {
+    // Nominatim (OpenStreetMap) — CORS-enabled, free, no key required
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&addressdetails=1&accept-language=en`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data: NominatimResult[] = await res.json();
+    return data
+      .filter(r => r.addresstype && ['city','town','village','municipality','suburb','county'].includes(r.addresstype))
+      .map(r => ({
+        name: r.name || r.address?.city || r.address?.town || r.address?.village || r.display_name.split(',')[0],
+        admin1: r.address?.state ?? r.address?.county ?? '',
+        country: r.address?.country ?? '',
+        lat: parseFloat(r.lat),
+        lng: parseFloat(r.lon),
+      }));
+  } catch (err) {
+    console.error('Geocoding error:', err);
     return [];
   }
+}
+
+interface NominatimResult {
+  lat: string;
+  lon: string;
+  display_name: string;
+  name?: string;
+  addresstype?: string;
+  address?: {
+    city?: string; town?: string; village?: string;
+    state?: string; county?: string; country?: string;
+  };
 }
 
 // ── KNOWN LOCATIONS ────────────────────────────────────────────────────────

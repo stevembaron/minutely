@@ -23,18 +23,26 @@ export function LocationScreen({ onBack, location, selectLocation }: Props) {
   ]);
   const [geoResults, setGeoResults] = useState<GeoResult[]>([]);
   const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!query.trim()) { setGeoResults([]); setSearching(false); return; }
+    if (!query.trim()) { setGeoResults([]); setSearching(false); setSearchError(false); return; }
 
     setSearching(true);
+    setSearchError(false);
     debounceRef.current = setTimeout(async () => {
-      const results = await searchLocations(query);
-      setGeoResults(results);
-      setSearching(false);
-    }, 350);
+      try {
+        const results = await searchLocations(query);
+        setGeoResults(results);
+      } catch {
+        setSearchError(true);
+        setGeoResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 400);
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [query]);
@@ -99,7 +107,7 @@ export function LocationScreen({ onBack, location, selectLocation }: Props) {
         {query ? (
           <>
             <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, margin: '18px 0 8px' }}>
-              {searching ? 'Searching…' : geoResults.length > 0 ? `Results for "${query}"` : 'No results'}
+              {searching ? 'Searching…' : searchError ? 'Search unavailable' : geoResults.length > 0 ? `Results for "${query}"` : 'No results'}
             </div>
             {geoResults.length > 0 && (
               <div style={{ background: '#fff', borderRadius: 12, border: '1px solid rgba(0,0,0,0.08)', overflow: 'hidden' }}>
