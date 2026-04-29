@@ -100,7 +100,22 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
   const lowTemp  = todayTemps.length > 0 ? Math.min(...todayTemps) : null;
 
   const condLabelMap: Record<string, string> = { rain: 'Rain', drizzle: 'Drizzle', clearing: 'Clearing', clear: 'Clear' };
-  const descMap: Record<string, string> = { rain: 'Keep an umbrella handy', drizzle: 'Light mist in the air', clearing: 'Skies brightening', clear: 'Great time to head out' };
+  const baseDescMap: Record<string, string> = { rain: 'Keep an umbrella handy', drizzle: 'Light mist in the air', clearing: 'Skies brightening', clear: 'Great time to head out' };
+
+  const minsUntilWet = (() => {
+    for (let i = nowMin + 1; i < 60; i++) {
+      if (forecast[i].condition === 'drizzle' || forecast[i].condition === 'rain') return i - nowMin;
+    }
+    return null;
+  })();
+
+  function chunkDesc(condition: string, isNow: boolean): string {
+    if (isNow && (condition === 'clear' || condition === 'clearing') && minsUntilWet !== null) {
+      return minsUntilWet <= 15 ? 'Enjoy it while it lasts' : 'Make the most of it';
+    }
+    if (isNow && condition === 'clearing' && minsUntilWet === null) return 'Skies brightening';
+    return baseDescMap[condition] ?? '';
+  }
   const uvLabel = uvIndex <= 2 ? 'Low' : uvIndex <= 5 ? 'Moderate' : uvIndex <= 7 ? 'High' : 'Very High';
   const isStale = lastUpdated != null && (Date.now() - lastUpdated.getTime()) > 25 * 60 * 1000;
 
@@ -340,7 +355,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
                     <CondIcon condition={chunk.condition} size={18} color={s.accent} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a' }}>{condLabelMap[chunk.condition]}</div>
-                      <div style={{ fontSize: 12, color: '#999', marginTop: 1 }}>{descMap[chunk.condition]}</div>
+                      <div style={{ fontSize: 12, color: '#999', marginTop: 1 }}>{chunkDesc(chunk.condition, chunk.isNow)}</div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: s.textAccent }}>{timeStr}</div>
