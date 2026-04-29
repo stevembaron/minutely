@@ -131,27 +131,35 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
       {/* HEADER */}
       <div style={{
         padding: 'max(env(safe-area-inset-top), 54px) 22px 0',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
       }}>
+        {/* Logo + location */}
         <div>
-          <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, marginBottom: 2 }}>
-            Now in
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: cs.accent, opacity: 0.35 }} />
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: cs.accent, opacity: 0.65 }} />
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: cs.accent }} />
+            </div>
+            <span style={{ fontSize: 15, fontWeight: 700, color: cs.accent, letterSpacing: '-0.02em', lineHeight: 1 }}>soon</span>
           </div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: '#1a1a1a', letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+          <div style={{ fontSize: 15, fontWeight: 500, color: '#666', letterSpacing: '-0.01em' }}>
             {location ? location.split(',')[0] : 'My Location'}
           </div>
         </div>
+
+        {/* Settings pill */}
         <button onClick={onSettings} style={{
-          background: 'rgba(0,0,0,0.06)', border: 'none',
-          borderRadius: '50%', width: 36, height: 36,
-          color: '#666', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
+          background: 'rgba(255,255,255,0.75)', border: '1px solid rgba(0,0,0,0.09)',
+          borderRadius: 20, padding: '7px 13px',
+          cursor: 'pointer', fontFamily: 'inherit',
+          display: 'flex', alignItems: 'center', gap: 6,
         }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
+          <span style={{ fontSize: 13, color: '#555', fontWeight: 500 }}>{timeLabel(0)}</span>
         </button>
       </div>
 
