@@ -1,11 +1,11 @@
-import type { Condition, MinuteForecast, LocationInfo, ScenarioKey, CurrentConditions } from './types';
+import type { Condition, MinuteForecast, LocationInfo, ScenarioKey, CurrentConditions, HourlyForecast } from './types';
 
 // ── COLOR / STYLE SYSTEM ───────────────────────────────────────────────────
 export const CONDITION_STYLE: Record<Condition, { barColor: string; accent: string; bg: string; textAccent: string; label: string }> = {
-  clear:    { barColor: '#3d9e5f', accent: '#2e7d4a', bg: '#f7fbf8', textAccent: '#256038', label: 'Clear'    },
-  clearing: { barColor: '#8db840', accent: '#6e9630', bg: '#f8faf4', textAccent: '#4f6e22', label: 'Clearing' },
-  drizzle:  { barColor: '#d4a017', accent: '#b88512', bg: '#fdfaf3', textAccent: '#8a620d', label: 'Drizzle'  },
-  rain:     { barColor: '#c94f2a', accent: '#a83e1e', bg: '#fdf8f7', textAccent: '#8a2e10', label: 'Rain'     },
+  clear:    { barColor: '#3d9e5f', accent: '#2e7d4a', bg: '#edf8f2', textAccent: '#256038', label: 'Clear'    },
+  clearing: { barColor: '#8db840', accent: '#6e9630', bg: '#f3f8eb', textAccent: '#4f6e22', label: 'Clearing' },
+  drizzle:  { barColor: '#d4a017', accent: '#b88512', bg: '#fbf6e8', textAccent: '#8a620d', label: 'Drizzle'  },
+  rain:     { barColor: '#c94f2a', accent: '#a83e1e', bg: '#f2eceb', textAccent: '#8a2e10', label: 'Rain'     },
 };
 
 export function getStyle(condition: Condition, precip: number) {
@@ -111,6 +111,7 @@ function celsiusToFahrenheit(c: number): number {
 export interface LiveData {
   forecast: MinuteForecast[];
   current: CurrentConditions;
+  hourly: HourlyForecast[];
 }
 
 function kphToMph(kph: number): number { return kph * 0.621371; }
@@ -158,7 +159,23 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
     }
 
     if (!forecast) return null;
-    return { forecast, current };
+
+    const hourly: HourlyForecast[] = (data.hourly?.data ?? []).slice(0, 24).map((h: {
+      time: number; icon?: string; temperature?: number;
+      precipIntensity?: number; precipProbability?: number;
+    }) => {
+      const tempF = celsiusToFahrenheit(h.temperature ?? currentTempC);
+      const precipMm = h.precipIntensity ?? 0;
+      return {
+        time: new Date((h.time ?? 0) * 1000),
+        condition: iconToCondition(h.icon ?? '', precipMm),
+        precip: mmToIntensity(precipMm),
+        temp: tempF,
+        precipProb: Math.round((h.precipProbability ?? 0) * 100),
+      };
+    });
+
+    return { forecast, current, hourly };
   } catch (err) {
     console.error('Pirate Weather error:', err);
     return null;

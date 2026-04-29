@@ -5,7 +5,7 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { LocationScreen } from './screens/LocationScreen';
 import { AdminScreen } from './screens/AdminScreen';
 import { buildForecast, fetchLiveData } from './weather';
-import type { Screen, ScenarioKey, Settings, MinuteForecast, CurrentConditions } from './types';
+import type { Screen, ScenarioKey, Settings, MinuteForecast, CurrentConditions, HourlyForecast } from './types';
 
 function load<T>(key: string, fallback: T): T {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
@@ -28,10 +28,12 @@ export default function App() {
     tempUnit: '°F', windUnit: 'mph', alertRain: true, alertClear: true, alertWorsen: false,
   }));
   const [currentConditions, setCurrentConditions] = useState<CurrentConditions | null>(null);
+  const [hourlyForecast, setHourlyForecast] = useState<HourlyForecast[]>([]);
   const [exiting, setExiting] = useState(false);
   const [, setUsingLive] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState(false);
 
   // Persist settings and location
   useEffect(() => { save('soon-settings', settings); }, [settings]);
@@ -45,14 +47,18 @@ export default function App() {
 
   const doFetch = (coords: { lat: number; lng: number }) => {
     setRefreshing(true);
+    setFetchError(false);
     return fetchLiveData(coords.lat, coords.lng).then(result => {
-      if (!result) return;
+      if (!result) { setFetchError(true); return; }
       setForecast(result.forecast);
       setCurrentConditions(result.current);
+      setHourlyForecast(result.hourly);
       setNowMin(0);
       setUsingLive(true);
       setLastUpdated(new Date());
-    }).finally(() => setRefreshing(false));
+      setFetchError(false);
+    }).catch(() => setFetchError(true))
+      .finally(() => setRefreshing(false));
   };
 
   // Fetch live data whenever coords change
@@ -60,16 +66,28 @@ export default function App() {
     if (!locationCoords) { setUsingLive(false); return; }
     let cancelled = false;
     setRefreshing(true);
+    setFetchError(false);
     fetchLiveData(locationCoords.lat, locationCoords.lng).then(result => {
-      if (cancelled || !result) return;
+      if (cancelled) return;
+      if (!result) { setFetchError(true); return; }
       setForecast(result.forecast);
       setCurrentConditions(result.current);
+      setHourlyForecast(result.hourly);
       setNowMin(0);
       setUsingLive(true);
       setLastUpdated(new Date());
-    }).finally(() => { if (!cancelled) setRefreshing(false); });
+      setFetchError(false);
+    }).catch(() => { if (!cancelled) setFetchError(true); })
+      .finally(() => { if (!cancelled) setRefreshing(false); });
     return () => { cancelled = true; };
   }, [locationCoords]);
+
+  // Auto-refresh every 10 minutes
+  useEffect(() => {
+    if (!locationCoords) return;
+    const id = setInterval(() => doFetch(locationCoords), 10 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [locationCoords]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const navigate = (to: Screen) => {
     setExiting(true);
@@ -100,11 +118,13 @@ export default function App() {
           nowMin={nowMin}
           setNowMin={setNowMin}
           forecast={adjustedForecast}
+          hourlyForecast={hourlyForecast}
           location={location}
           currentConditions={currentConditions}
           settings={settings}
           lastUpdated={lastUpdated}
           refreshing={refreshing}
+          fetchError={fetchError}
           onRefresh={() => locationCoords && doFetch(locationCoords)}
         />
       )}

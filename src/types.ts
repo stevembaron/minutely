@@ -35,3 +35,11 @@ export interface Settings {
 export type Screen = 'home' | 'settings' | 'locations' | 'admin';
 
 export type ScenarioKey = 'rain_clearing' | 'all_clear' | 'storm_incoming' | 'steady_rain' | 'drizzle';
+
+export interface HourlyForecast {
+  time: Date;
+  condition: Condition;
+  precip: number;     // 0–1 intensity
+  temp: number;       // °F
+  precipProb: number; // 0–100
+}

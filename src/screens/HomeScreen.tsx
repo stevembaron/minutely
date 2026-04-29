@@ -1,18 +1,20 @@
 import { useState, useRef, useCallback } from 'react';
 import { CondIcon } from '../components/Icons';
 import { getStyle, timeLabel } from '../weather';
-import type { MinuteForecast, CurrentConditions, Settings } from '../types';
+import type { MinuteForecast, HourlyForecast, CurrentConditions, Settings } from '../types';
 
 interface Props {
   onSettings: () => void;
   nowMin: number;
   setNowMin: (n: number) => void;
   forecast: MinuteForecast[];
+  hourlyForecast: HourlyForecast[];
   location: string;
   currentConditions: CurrentConditions | null;
   settings: Settings;
   lastUpdated: Date | null;
   refreshing: boolean;
+  fetchError: boolean;
   onRefresh: () => void;
 }
 
@@ -27,7 +29,12 @@ function formatAge(d: Date): string {
   return `${mins} min ago`;
 }
 
-export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, currentConditions, settings, lastUpdated, refreshing, onRefresh }: Props) {
+function hourLabel(d: Date): string {
+  const h = d.getHours() % 12 || 12;
+  return `${h}${d.getHours() < 12 ? 'a' : 'p'}`;
+}
+
+export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyForecast, location, currentConditions, settings, lastUpdated, refreshing, fetchError, onRefresh }: Props) {
   const current = forecast[nowMin];
   const cs = getStyle(current.condition, current.precip);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -50,17 +57,25 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
   })();
 
   const nextEvent = (() => {
+    const isWet = (c: MinuteForecast['condition']) => c === 'drizzle' || c === 'rain';
+    const isDry = (c: MinuteForecast['condition']) => c === 'clear' || c === 'clearing';
     for (let i = nowMin + 1; i < 60; i++) {
       const cond = forecast[i].condition;
-      if (current.condition === 'clear' || current.condition === 'clearing') {
-        if (cond === 'drizzle' || cond === 'rain') {
-          return `${cond === 'rain' ? 'Rain' : 'Drizzle'} starting in ${i - nowMin} min`;
-        }
-      } else {
-        if (cond === 'clear' || cond === 'clearing') return `Clears up in ${i - nowMin} min`;
+      if (isDry(current.condition) && isWet(cond)) {
+        return `${cond === 'rain' ? 'Rain' : 'Drizzle'} starting in ${i - nowMin} min`;
+      }
+      if (isWet(current.condition) && isDry(cond)) {
+        return `Clears up in ${i - nowMin} min`;
+      }
+      if (current.condition === 'drizzle' && cond === 'rain') {
+        return `Heavier rain in ${i - nowMin} min`;
+      }
+      if (current.condition === 'rain' && cond === 'drizzle') {
+        return `Easing to drizzle in ${i - nowMin} min`;
       }
     }
-    if (current.condition === 'clear' || current.condition === 'clearing') return 'Clear skies for the rest of the hour';
+    if (isDry(current.condition)) return 'Clear skies for the rest of the hour';
+    if (current.condition === 'drizzle') return 'Light drizzle through the hour';
     return 'Rain continues through the hour';
   })();
 
@@ -87,6 +102,10 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
   const condLabelMap: Record<string, string> = { rain: 'Rain', drizzle: 'Drizzle', clearing: 'Clearing', clear: 'Clear' };
   const descMap: Record<string, string> = { rain: 'Keep an umbrella handy', drizzle: 'Light mist in the air', clearing: 'Skies brightening', clear: 'Great time to head out' };
 
+  const isStale = lastUpdated != null && (Date.now() - lastUpdated.getTime()) > 25 * 60 * 1000;
+
+  const uvLabel = uvIndex <= 2 ? 'Low' : uvIndex <= 5 ? 'Moderate' : uvIndex <= 7 ? 'High' : 'Very High';
+
   return (
     <div style={{
       width: '100%', height: '100%',
@@ -101,7 +120,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
         <div>
           <div style={{ fontSize: 11, color: '#999', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500 }}>Now in</div>
           <div style={{ fontSize: 18, fontWeight: 600, color: '#1a1a1a', letterSpacing: '-0.02em', marginTop: 1 }}>
-            {location ? location.split(',')[0] : 'San Francisco'}
+            {location ? location.split(',')[0] : 'My Location'}
           </div>
         </div>
         <button onClick={onSettings} style={{
@@ -115,7 +134,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
-          {timeLabel(0)}
+          Settings
         </button>
       </div>
 
@@ -160,7 +179,6 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
         }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: cs.barColor, flexShrink: 0 }} />
           <span style={{ fontSize: 14, fontWeight: 500, color: '#2a2a2a', flex: 1 }}>{nextEvent}</span>
-          {/* Refresh button */}
           <button onClick={onRefresh} disabled={refreshing} style={{
             background: 'none', border: 'none', cursor: refreshing ? 'default' : 'pointer',
             padding: 4, color: '#bbb', display: 'flex', alignItems: 'center',
@@ -174,9 +192,14 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
             </svg>
           </button>
         </div>
-        {lastUpdated && (
-          <div style={{ fontSize: 10, color: '#ccc', marginTop: 5, textAlign: 'right', paddingRight: 2 }}>
-            Updated {formatAge(lastUpdated)}
+        {/* Status line: error, stale, or last-updated */}
+        {fetchError ? (
+          <div style={{ fontSize: 11, color: '#c0392b', marginTop: 5, textAlign: 'right', paddingRight: 2 }}>
+            Couldn't update · tap to retry
+          </div>
+        ) : lastUpdated && (
+          <div style={{ fontSize: 10, color: isStale ? '#d4a017' : '#ccc', marginTop: 5, textAlign: 'right', paddingRight: 2, transition: 'color 0.3s' }}>
+            {isStale ? '⚠ ' : ''}Updated {formatAge(lastUpdated)}
           </div>
         )}
       </div>
@@ -239,52 +262,95 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
         </div>
       </div>
 
-      {/* STORY LIST */}
-      <div style={{ flex: 1, padding: '16px 22px 0', overflowY: 'auto' }}>
-        <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, marginBottom: 10 }}>
-          What to expect
-        </div>
-        {chunks.map((chunk, idx) => {
-          const s = getStyle(chunk.condition, chunk.precip);
-          const timeStr = chunk.isNow ? 'Now' : `+${chunk.start - nowMin} min`;
-          return (
-            <div key={idx} style={{
-              display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0',
-              borderBottom: idx < chunks.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
-              opacity: chunk.isNow ? 1 : 0.6, transition: 'opacity 0.3s',
-            }}>
-              <div style={{ width: 3, alignSelf: 'stretch', background: s.barColor, borderRadius: 2, flexShrink: 0 }} />
-              <CondIcon condition={chunk.condition} size={20} color={s.accent} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a' }}>{condLabelMap[chunk.condition]}</div>
-                <div style={{ fontSize: 12, color: '#888', marginTop: 1 }}>{descMap[chunk.condition]}</div>
-              </div>
-              <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: s.textAccent }}>{timeStr}</div>
-                <div style={{ fontSize: 11, color: '#bbb', marginTop: 1 }}>{chunk.duration}min</div>
+      {/* SCROLLABLE LOWER SECTION */}
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}>
+
+        {/* HOURLY FORECAST */}
+        {hourlyForecast.length > 0 && (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, margin: '0 22px 10px' }}>
+              24-hour forecast
+            </div>
+            <div style={{ overflowX: 'auto', paddingLeft: 22, paddingRight: 22, scrollbarWidth: 'none' }}>
+              <div style={{ display: 'flex', gap: 8, paddingBottom: 4 }}>
+                {hourlyForecast.map((h, i) => {
+                  const hs = getStyle(h.condition, h.precip);
+                  const displayHTemp = useCelsius ? fToC(h.temp) : Math.round(h.temp);
+                  const isNowHour = i === 0;
+                  return (
+                    <div key={i} style={{
+                      flexShrink: 0, width: 58, background: isNowHour ? '#fff' : 'rgba(255,255,255,0.55)',
+                      borderRadius: 12, padding: '10px 0 8px',
+                      border: isNowHour ? `1.5px solid ${cs.accent}30` : '1.5px solid transparent',
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
+                      transition: 'background 0.3s',
+                    }}>
+                      <div style={{ fontSize: 11, color: isNowHour ? cs.textAccent : '#aaa', fontWeight: isNowHour ? 600 : 400 }}>
+                        {isNowHour ? 'now' : hourLabel(h.time)}
+                      </div>
+                      <CondIcon condition={h.condition} size={16} color={hs.accent} />
+                      <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a1a' }}>{displayHTemp}°</div>
+                      {h.precipProb > 10 ? (
+                        <div style={{ fontSize: 10, color: hs.textAccent, fontWeight: 500 }}>{h.precipProb}%</div>
+                      ) : (
+                        <div style={{ height: 14 }} />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          );
-        })}
-      </div>
-
-      {/* STATS ROW */}
-      <div style={{ padding: '14px 22px 16px', display: 'flex' }}>
-        {[
-          { label: 'Wind',  value: `${displayWind} ${displayWindUnit}` },
-          { label: 'Humid', value: `${humidity}%` },
-          { label: 'UV',    value: uvIndex <= 2 ? `${uvIndex} low` : uvIndex <= 5 ? `${uvIndex} mod` : `${uvIndex} high` },
-          { label: 'Vis',   value: displayVis },
-        ].map((s, i, arr) => (
-          <div key={s.label} style={{
-            flex: 1, textAlign: 'center',
-            borderRight: i < arr.length - 1 ? '1px solid rgba(0,0,0,0.08)' : 'none',
-            padding: '2px 0',
-          }}>
-            <div style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a' }}>{s.value}</div>
-            <div style={{ fontSize: 10, color: '#aaa', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
           </div>
-        ))}
+        )}
+
+        {/* STORY LIST */}
+        <div style={{ padding: '16px 22px 0' }}>
+          <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, marginBottom: 10 }}>
+            What to expect
+          </div>
+          {chunks.map((chunk, idx) => {
+            const s = getStyle(chunk.condition, chunk.precip);
+            const timeStr = chunk.isNow ? 'Now' : `+${chunk.start - nowMin} min`;
+            return (
+              <div key={idx} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0',
+                borderBottom: idx < chunks.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
+                opacity: chunk.isNow ? 1 : 0.6, transition: 'opacity 0.3s',
+              }}>
+                <div style={{ width: 3, alignSelf: 'stretch', background: s.barColor, borderRadius: 2, flexShrink: 0 }} />
+                <CondIcon condition={chunk.condition} size={20} color={s.accent} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a' }}>{condLabelMap[chunk.condition]}</div>
+                  <div style={{ fontSize: 12, color: '#888', marginTop: 1 }}>{descMap[chunk.condition]}</div>
+                </div>
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: s.textAccent }}>{timeStr}</div>
+                  <div style={{ fontSize: 11, color: '#bbb', marginTop: 1 }}>{chunk.duration}min</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* STATS ROW */}
+        <div style={{ padding: '14px 22px 0', display: 'flex' }}>
+          {[
+            { label: 'Wind',  value: `${displayWind} ${displayWindUnit}` },
+            { label: 'Humid', value: `${humidity}%` },
+            { label: 'UV',    value: `${uvIndex} · ${uvLabel}` },
+            { label: 'Vis',   value: displayVis },
+          ].map((s, i, arr) => (
+            <div key={s.label} style={{
+              flex: 1, textAlign: 'center',
+              borderRight: i < arr.length - 1 ? '1px solid rgba(0,0,0,0.08)' : 'none',
+              padding: '2px 0',
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 500, color: '#1a1a1a' }}>{s.value}</div>
+              <div style={{ fontSize: 10, color: '#aaa', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+
       </div>
     </div>
   );
