@@ -115,7 +115,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
 
       {/* HEADER */}
       <div style={{
-        padding: 'max(env(safe-area-inset-top), 20px) 22px 0',
+        padding: 'max(env(safe-area-inset-top), 54px) 22px 0',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
         <div>

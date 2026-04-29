@@ -59,9 +59,9 @@ export function IOSDevice({ children, dark = false }: IOSDeviceProps) {
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 }}>
         <IOSStatusBar dark={dark} />
       </div>
-      {/* Content */}
+      {/* Content — starts at top:0; screens must clear the ~54px status bar area themselves */}
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, overflow: 'auto' }}>{children}</div>
+        <div style={{ flex: 1, overflow: 'hidden' }}>{children}</div>
       </div>
       {/* Home indicator */}
       <div style={{
