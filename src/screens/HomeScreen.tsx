@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { CondIcon } from '../components/Icons';
 import { getStyle, timeLabel } from '../weather';
-import type { MinuteForecast, CurrentConditions } from '../types';
+import type { MinuteForecast, CurrentConditions, Settings } from '../types';
 
 interface Props {
   onSettings: () => void;
@@ -10,13 +10,31 @@ interface Props {
   forecast: MinuteForecast[];
   location: string;
   currentConditions: CurrentConditions | null;
+  settings: Settings;
+  lastUpdated: Date | null;
+  refreshing: boolean;
+  onRefresh: () => void;
 }
 
-export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, currentConditions }: Props) {
+function fToC(f: number) { return Math.round((f - 32) * 5 / 9); }
+function mphToKph(mph: number) { return Math.round(mph * 1.60934); }
+function miToKm(mi: number) { return Math.round(mi * 1.60934); }
+
+function formatAge(d: Date): string {
+  const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins === 1) return '1 min ago';
+  return `${mins} min ago`;
+}
+
+export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, currentConditions, settings, lastUpdated, refreshing, onRefresh }: Props) {
   const current = forecast[nowMin];
   const cs = getStyle(current.condition, current.precip);
   const timelineRef = useRef<HTMLDivElement>(null);
   const [hoveredMin, setHoveredMin] = useState<number | null>(null);
+
+  const useCelsius = settings.tempUnit === '°C';
+  const useKph = settings.windUnit === 'km/h';
 
   const chunks = (() => {
     const result: { condition: MinuteForecast['condition']; start: number; duration: number; isNow: boolean; precip: number }[] = [];
@@ -32,18 +50,14 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
   })();
 
   const nextEvent = (() => {
-    // Look ahead from current minute for any condition change
     for (let i = nowMin + 1; i < 60; i++) {
       const cond = forecast[i].condition;
       if (current.condition === 'clear' || current.condition === 'clearing') {
         if (cond === 'drizzle' || cond === 'rain') {
-          const label = cond === 'rain' ? 'Rain' : 'Drizzle';
-          return `${label} starting in ${i - nowMin} min`;
+          return `${cond === 'rain' ? 'Rain' : 'Drizzle'} starting in ${i - nowMin} min`;
         }
       } else {
-        if (cond === 'clear' || cond === 'clearing') {
-          return `Clears up in ${i - nowMin} min`;
-        }
+        if (cond === 'clear' || cond === 'clearing') return `Clears up in ${i - nowMin} min`;
       }
     }
     if (current.condition === 'clear' || current.condition === 'clearing') return 'Clear skies for the rest of the hour';
@@ -54,15 +68,21 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
     if (!timelineRef.current) return;
     const rect = timelineRef.current.getBoundingClientRect();
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    setNowMin(Math.round(pct * 59));
+    setNowMin(Math.round(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * 59));
   }, [setNowMin]);
 
-  const feelsLike = currentConditions?.feelsLike ?? Math.round(current.temp - current.precip * 5);
-  const wind      = currentConditions?.windSpeed  ?? (current.condition === 'rain' ? 14 : current.condition === 'drizzle' ? 8 : 4);
-  const humidity  = currentConditions?.humidity   ?? (current.condition === 'rain' ? 91 : current.condition === 'drizzle' ? 79 : 54);
-  const uvIndex   = currentConditions?.uvIndex    ?? (current.condition === 'clear' ? 4 : 1);
-  const visibility = currentConditions?.visibility ?? (current.condition === 'rain' ? 1 : 10);
+  const feelsLikeF = currentConditions?.feelsLike ?? Math.round(current.temp - current.precip * 5);
+  const windMph    = currentConditions?.windSpeed  ?? (current.condition === 'rain' ? 14 : current.condition === 'drizzle' ? 8 : 4);
+  const humidity   = currentConditions?.humidity   ?? (current.condition === 'rain' ? 91 : current.condition === 'drizzle' ? 79 : 54);
+  const uvIndex    = currentConditions?.uvIndex    ?? (current.condition === 'clear' ? 4 : 1);
+  const visMi      = currentConditions?.visibility ?? (current.condition === 'rain' ? 1 : 10);
+
+  const displayTemp     = useCelsius ? fToC(current.temp) : Math.round(current.temp);
+  const displayFeels    = useCelsius ? fToC(feelsLikeF) : feelsLikeF;
+  const displayWind     = useKph ? mphToKph(windMph) : windMph;
+  const displayWindUnit = useKph ? 'km/h' : 'mph';
+  const displayVis      = useKph ? `${miToKm(visMi)}km` : `${visMi}mi`;
+  const tempUnit        = settings.tempUnit;
 
   const condLabelMap: Record<string, string> = { rain: 'Rain', drizzle: 'Drizzle', clearing: 'Clearing', clear: 'Clear' };
   const descMap: Record<string, string> = { rain: 'Keep an umbrella handy', drizzle: 'Light mist in the air', clearing: 'Skies brightening', clear: 'Great time to head out' };
@@ -116,15 +136,13 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
           <div style={{
             fontFamily: 'DM Sans, sans-serif',
             fontSize: 86, fontWeight: 300,
-            color: '#1a1a1a',
-            lineHeight: 1, letterSpacing: '-0.03em',
-            transition: 'color 0.6s',
+            color: '#1a1a1a', lineHeight: 1, letterSpacing: '-0.03em',
           }}>
-            {Math.round(current.temp)}
-            <span style={{ fontSize: 44, fontWeight: 300, verticalAlign: 'top', marginTop: 12, display: 'inline-block' }}>°F</span>
+            {displayTemp}
+            <span style={{ fontSize: 44, fontWeight: 300, verticalAlign: 'top', marginTop: 12, display: 'inline-block' }}>{tempUnit}</span>
           </div>
           <div style={{ color: '#888', fontSize: 13, marginTop: 5, fontWeight: 400 }}>
-            Feels like {feelsLike}° · {humidity}% humidity
+            Feels like {displayFeels}° · {humidity}% humidity
           </div>
         </div>
         <div style={{ paddingTop: 28, opacity: 0.8 }}>
@@ -141,12 +159,30 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
           transition: 'border-color 0.8s',
         }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: cs.barColor, flexShrink: 0 }} />
-          <span style={{ fontSize: 14, fontWeight: 500, color: '#2a2a2a' }}>{nextEvent}</span>
+          <span style={{ fontSize: 14, fontWeight: 500, color: '#2a2a2a', flex: 1 }}>{nextEvent}</span>
+          {/* Refresh button */}
+          <button onClick={onRefresh} disabled={refreshing} style={{
+            background: 'none', border: 'none', cursor: refreshing ? 'default' : 'pointer',
+            padding: 4, color: '#bbb', display: 'flex', alignItems: 'center',
+            opacity: refreshing ? 0.4 : 1, transition: 'opacity 0.2s',
+            flexShrink: 0,
+          }} title={lastUpdated ? `Updated ${formatAge(lastUpdated)}` : 'Refresh'}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+              style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+          </button>
         </div>
+        {lastUpdated && (
+          <div style={{ fontSize: 10, color: '#ccc', marginTop: 5, textAlign: 'right', paddingRight: 2 }}>
+            Updated {formatAge(lastUpdated)}
+          </div>
+        )}
       </div>
 
       {/* 60-MIN TIMELINE */}
-      <div style={{ margin: '20px 0 0', padding: '0 22px' }}>
+      <div style={{ margin: '16px 0 0', padding: '0 22px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 }}>
           <span style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500 }}>Next hour</span>
           <span style={{ fontSize: 11, color: hoveredMin !== null ? cs.textAccent : '#bbb', fontFamily: 'monospace', transition: 'color 0.2s' }}>
@@ -164,32 +200,22 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
             setHoveredMin(Math.round(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * 59));
           }}
           onMouseLeave={() => setHoveredMin(null)}
-          style={{
-            width: '100%', height: 64, cursor: 'crosshair',
-            background: 'rgba(0,0,0,0.04)',
-            borderRadius: 10, overflow: 'hidden',
-            position: 'relative',
-          }}
+          style={{ width: '100%', height: 64, cursor: 'crosshair', background: 'rgba(0,0,0,0.04)', borderRadius: 10, overflow: 'hidden', position: 'relative' }}
         >
           <div style={{ display: 'flex', height: '100%', alignItems: 'flex-end', gap: 1.5, padding: '0 2px' }}>
             {forecast.map((m, i) => {
               const s = getStyle(m.condition, m.precip);
               const barH = m.precip > 0 ? 16 + m.precip * 56 : 6;
-              const isPast = i < nowMin;
-              const isHovered = hoveredMin === i;
               return (
                 <div key={i} style={{
-                  flex: 1, minWidth: 2,
-                  height: `${Math.round(barH)}px`,
-                  background: s.barColor,
-                  borderRadius: '3px 3px 0 0',
-                  opacity: isPast ? 0.18 : isHovered ? 1 : 0.78,
+                  flex: 1, minWidth: 2, height: `${Math.round(barH)}px`,
+                  background: s.barColor, borderRadius: '3px 3px 0 0',
+                  opacity: i < nowMin ? 0.18 : hoveredMin === i ? 1 : 0.78,
                   transition: 'opacity 0.12s',
                 }} />
               );
             })}
           </div>
-          {/* NOW line */}
           <div style={{
             position: 'absolute', top: 0, bottom: 0,
             left: `calc(${(nowMin / 59) * 100}% - 1px)`,
@@ -197,10 +223,8 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
             transition: 'left 0.35s ease',
           }}>
             <div style={{
-              position: 'absolute', top: -1, left: '50%',
-              transform: 'translateX(-50%)',
-              width: 7, height: 7, borderRadius: '50%',
-              background: '#1a1a1a',
+              position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)',
+              width: 7, height: 7, borderRadius: '50%', background: '#1a1a1a',
               animation: 'nowBlink 2s ease-in-out infinite',
             }} />
           </div>
@@ -225,11 +249,9 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
           const timeStr = chunk.isNow ? 'Now' : `+${chunk.start - nowMin} min`;
           return (
             <div key={idx} style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '9px 0',
+              display: 'flex', alignItems: 'center', gap: 12, padding: '9px 0',
               borderBottom: idx < chunks.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none',
-              opacity: chunk.isNow ? 1 : 0.6,
-              transition: 'opacity 0.3s',
+              opacity: chunk.isNow ? 1 : 0.6, transition: 'opacity 0.3s',
             }}>
               <div style={{ width: 3, alignSelf: 'stretch', background: s.barColor, borderRadius: 2, flexShrink: 0 }} />
               <CondIcon condition={chunk.condition} size={20} color={s.accent} />
@@ -247,12 +269,12 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
       </div>
 
       {/* STATS ROW */}
-      <div style={{ padding: '14px 22px 16px', display: 'flex', gap: 0 }}>
+      <div style={{ padding: '14px 22px 16px', display: 'flex' }}>
         {[
-          { label: 'Wind',  value: `${wind} mph` },
+          { label: 'Wind',  value: `${displayWind} ${displayWindUnit}` },
           { label: 'Humid', value: `${humidity}%` },
           { label: 'UV',    value: uvIndex <= 2 ? `${uvIndex} low` : uvIndex <= 5 ? `${uvIndex} mod` : `${uvIndex} high` },
-          { label: 'Vis',   value: `${visibility}mi` },
+          { label: 'Vis',   value: displayVis },
         ].map((s, i, arr) => (
           <div key={s.label} style={{
             flex: 1, textAlign: 'center',
@@ -263,10 +285,6 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, location, 
             <div style={{ fontSize: 10, color: '#aaa', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
           </div>
         ))}
-      </div>
-
-      <div style={{ textAlign: 'center', paddingBottom: 8, fontSize: 10, color: '#ccc', letterSpacing: '0.05em' }}>
-        tap timeline to scrub · min {nowMin}
       </div>
     </div>
   );

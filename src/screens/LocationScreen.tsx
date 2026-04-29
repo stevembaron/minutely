@@ -15,16 +15,28 @@ interface Props {
   selectLocation: (name: string, lat: number, lng: number) => void;
 }
 
+const SAVED_KEY = 'soon-saved-locations';
+const DEFAULT_SAVED: SavedLocation[] = [
+  { name: 'San Francisco, CA', lat: 37.7749, lng: -122.4194 },
+  { name: 'New York, NY',      lat: 40.7128, lng: -74.0060 },
+];
+
+function loadSaved(): SavedLocation[] {
+  try { const v = localStorage.getItem(SAVED_KEY); return v ? JSON.parse(v) : DEFAULT_SAVED; } catch { return DEFAULT_SAVED; }
+}
+
 export function LocationScreen({ onBack, location, selectLocation }: Props) {
   const [query, setQuery] = useState('');
-  const [saved, setSaved] = useState<SavedLocation[]>([
-    { name: 'San Francisco, CA', lat: 37.7749, lng: -122.4194 },
-    { name: 'New York, NY',      lat: 40.7128, lng: -74.0060 },
-  ]);
+  const [saved, setSaved] = useState<SavedLocation[]>(loadSaved);
   const [geoResults, setGeoResults] = useState<GeoResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(false);
+  const [geoError, setGeoError] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(saved)); } catch { /* quota */ }
+  }, [saved]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -142,12 +154,22 @@ export function LocationScreen({ onBack, location, selectLocation }: Props) {
           <>
             {/* Use My Location */}
             <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, margin: '18px 0 8px' }}>Current location</div>
+            {geoError && (
+              <div style={{ fontSize: 13, color: '#c0392b', background: '#fdf0ef', border: '1px solid #f5c6c3', borderRadius: 10, padding: '10px 14px', marginBottom: 10 }}>
+                {geoError}
+              </div>
+            )}
             <div onClick={() => {
-              if (!navigator.geolocation) return;
-              navigator.geolocation.getCurrentPosition(pos => {
-                selectLocation('My Location', pos.coords.latitude, pos.coords.longitude);
-                onBack();
-              });
+              setGeoError('');
+              if (!navigator.geolocation) { setGeoError('Geolocation is not supported by your browser.'); return; }
+              navigator.geolocation.getCurrentPosition(
+                pos => { selectLocation('My Location', pos.coords.latitude, pos.coords.longitude); onBack(); },
+                err => {
+                  if (err.code === 1) setGeoError('Location access was denied. Enable it in your browser settings.');
+                  else if (err.code === 2) setGeoError('Location unavailable. Check your device settings.');
+                  else setGeoError('Could not get your location. Please try again.');
+                }
+              );
             }} style={{
               background: '#fff', borderRadius: 12, border: '1.5px solid #3d9e5f33',
               padding: '13px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
