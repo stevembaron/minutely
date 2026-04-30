@@ -73,7 +73,7 @@ export function SettingsScreen({ onBack, settings, setSettings, onAdmin, onLocat
 
   return (
     <div style={{ width: '100%', height: '100%', background: '#f7f5f2', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <div style={{ padding: 'max(env(safe-area-inset-top), 54px) 20px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+      <div style={{ padding: 'var(--top-safe) 20px 14px', display: 'flex', alignItems: 'center', gap: 10, borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
         <button onClick={onBack} style={{
           background: 'none', border: '1.5px solid rgba(0,0,0,0.12)', borderRadius: 20,
           padding: '5px 12px', color: '#555', cursor: 'pointer', fontFamily: 'inherit',

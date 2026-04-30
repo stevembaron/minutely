@@ -130,7 +130,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
 
       {/* HEADER */}
       <div style={{
-        padding: 'max(env(safe-area-inset-top), 54px) 22px 0',
+        padding: 'var(--top-safe) 22px 0',
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
       }}>
         {/* Logo + location */}
@@ -302,7 +302,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
       </div>
 
       {/* SCROLLABLE LOWER SECTION */}
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'max(env(safe-area-inset-bottom), 20px)', marginTop: 18 }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'var(--bottom-safe)', marginTop: 18 }}>
 
         {/* HOURLY FORECAST */}
         {hourlyForecast.length > 0 && (
@@ -310,7 +310,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
             <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, margin: '0 22px 10px' }}>
               24-hour forecast
             </div>
-            <div style={{ overflowX: 'auto', paddingLeft: 22, paddingRight: 22, scrollbarWidth: 'none' }}>
+            <div className="hourly-scroll" style={{ overflowX: 'auto', paddingLeft: 22, paddingRight: 22 }}>
               <div style={{ display: 'flex', gap: 8, paddingBottom: 4 }}>
                 {hourlyForecast.map((h, i) => {
                   const hs = getStyle(h.condition, h.precip);

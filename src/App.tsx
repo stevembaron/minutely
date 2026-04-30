@@ -102,7 +102,10 @@ export default function App() {
   };
 
   const adjustedForecast = forecast.map(m => ({ ...m, temp: m.temp + tempOffset }));
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 480;
+  // pointer:coarse = touch device (phone/tablet), catches landscape mode and wide phones too
+  const isMobile = typeof window !== 'undefined' && (
+    window.innerWidth <= 480 || window.matchMedia('(pointer: coarse)').matches
+  );
   const frameRef = useRef<HTMLDivElement>(null);
 
   const content = (
@@ -163,8 +166,10 @@ export default function App() {
   );
 
   if (isMobile) {
+    // position:fixed is more reliable than 100dvh on iOS Safari (dvh unsupported pre-15.4,
+    // and 100vh includes browser chrome which cuts off content at the bottom)
     return (
-      <div ref={frameRef} style={{ width: '100vw', height: '100dvh', overflow: 'hidden', fontFamily: 'DM Sans, sans-serif' }}>
+      <div ref={frameRef} style={{ position: 'fixed', inset: 0, overflow: 'hidden', fontFamily: 'DM Sans, sans-serif' }}>
         {content}
       </div>
     );
