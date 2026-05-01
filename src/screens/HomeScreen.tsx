@@ -85,30 +85,63 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
     return result;
   })();
 
+  const isWetCond = (c: MinuteForecast['condition']) => c === 'drizzle' || c === 'rain';
+  const isDryCond = (c: MinuteForecast['condition']) => c === 'clear' || c === 'clearing';
+
+  // First upcoming dry window of ≥ 5 min
+  const bestWindow = (() => {
+    let i = nowMin;
+    // If currently dry, skip past the current dry stretch
+    if (isDryCond(forecast[nowMin].condition)) {
+      while (i < 60 && isDryCond(forecast[i].condition)) i++;
+    }
+    while (i < 60) {
+      if (isDryCond(forecast[i].condition)) {
+        const start = i;
+        while (i < 60 && isDryCond(forecast[i].condition)) i++;
+        if (i - start >= 5) return { start, end: i - 1 };
+      } else i++;
+    }
+    return null;
+  })();
+
+  // Condition transition points (only major changes)
+  const transitions = (() => {
+    const res: { minute: number; toCondition: MinuteForecast['condition'] }[] = [];
+    for (let i = nowMin + 1; i < 60; i++) {
+      if (forecast[i].condition !== forecast[i - 1].condition)
+        res.push({ minute: i, toCondition: forecast[i].condition });
+    }
+    return res;
+  })();
+
   const nextEvent = (() => {
-    const isWet = (c: MinuteForecast['condition']) => c === 'drizzle' || c === 'rain';
-    const isDry = (c: MinuteForecast['condition']) => c === 'clear' || c === 'clearing';
     for (let i = nowMin + 1; i < 60; i++) {
       const cond = forecast[i].condition;
-      if (isDry(current.condition) && isWet(cond)) {
+      if (isDryCond(current.condition) && isWetCond(cond)) {
         const mins = i - nowMin;
         const label = cond === 'rain' ? 'Rain' : 'Drizzle';
         if (mins <= 5) return `${label} arriving — head in soon`;
         if (mins <= 12) return `${label} in ${mins} min — wrap up outside`;
         return `${label} expected in ${mins} min`;
       }
-      if (isWet(current.condition) && isDry(cond)) {
+      if (isWetCond(current.condition) && isDryCond(cond)) {
         const mins = i - nowMin;
-        if (mins <= 5) return 'Clearing up any moment now';
-        if (mins <= 15) return `Clears in ${mins} min — hang tight`;
-        return `Should clear in about ${mins} min`;
+        // Find how long the upcoming dry window lasts
+        let dryEnd = i;
+        while (dryEnd < 60 && isDryCond(forecast[dryEnd].condition)) dryEnd++;
+        const winLen = dryEnd - i;
+        const winStr = winLen < 60 - nowMin ? ` · ${winLen} min window` : '';
+        if (mins <= 5) return `Clearing up any moment now${winStr}`;
+        if (mins <= 15) return `Clears in ${mins} min${winStr}`;
+        return `Should clear in about ${mins} min${winStr}`;
       }
       if (current.condition === 'drizzle' && cond === 'rain')
         return `Rain intensifying in ${i - nowMin} min`;
       if (current.condition === 'rain' && cond === 'drizzle')
         return `Rain easing up in ${i - nowMin} min`;
     }
-    if (isDry(current.condition)) return 'Clear skies for the next hour';
+    if (isDryCond(current.condition)) return 'Clear skies for the next hour';
     if (current.condition === 'drizzle') return 'Light drizzle through the hour';
     return 'Rain continues through the hour';
   })();
@@ -300,56 +333,130 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
             {hoveredMin !== null ? `${timeLabel(hoveredMin - nowMin)} · +${hoveredMin - nowMin}min` : `${timeLabel(0)} → ${timeLabel(60 - nowMin, true)}`}
           </span>
         </div>
-        <div
-          ref={timelineRef}
-          onClick={handleTimelineInteract}
-          onTouchMove={handleTimelineInteract}
-          onMouseMove={(e) => {
-            const rect = timelineRef.current!.getBoundingClientRect();
-            setHoveredMin(Math.round(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * 59));
-          }}
-          onMouseLeave={() => setHoveredMin(null)}
-          style={{ width: '100%', height: 56, cursor: 'crosshair', background: 'rgba(0,0,0,0.04)', borderRadius: 10, overflow: 'hidden', position: 'relative' }}
-        >
-          <div style={{ display: 'flex', height: '100%', alignItems: 'flex-end', gap: 1.5, padding: '0 2px' }}>
-            {forecast.map((m, i) => {
-              const s = getStyle(m.condition, m.precip);
-              const barH = m.precip > 0 ? 14 + m.precip * 48 : 5;
-              return (
-                <div key={i} style={{
-                  flex: 1, minWidth: 2, height: `${Math.round(barH)}px`,
-                  background: s.barColor, borderRadius: '3px 3px 0 0',
-                  opacity: i < nowMin ? 0.15 : hoveredMin === i ? 1 : 0.75,
-                  transition: 'opacity 0.12s',
-                }} />
-              );
-            })}
-          </div>
-          {/* Temperature sparkline overlay */}
-          {(() => {
-            const temps = forecast.map(m => m.temp);
-            const tMin = Math.min(...temps), tMax = Math.max(...temps);
-            const tRange = Math.max(tMax - tMin, 0.5);
-            const pts = temps.map((t, i) => `${i + 0.5},${50 - ((t - tMin) / tRange) * 34}`).join(' ');
+        {/* Tooltip anchor — overflow:visible so tooltip peeks above the chart */}
+        <div style={{ position: 'relative' }}>
+
+          {/* SCRUB TOOLTIP */}
+          {hoveredMin !== null && (() => {
+            const hm = forecast[hoveredMin];
+            const hs = getStyle(hm.condition, hm.precip);
+            const hTemp = useCelsius ? fToC(hm.temp) : Math.round(hm.temp);
+            const clamp = Math.max(6, Math.min(94, (hoveredMin / 59) * 100));
             return (
-              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-                viewBox="0 0 60 56" preserveAspectRatio="none">
-                <polyline points={pts} fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <div style={{
+                position: 'absolute', bottom: 'calc(100% + 8px)', left: `${clamp}%`,
+                transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 20,
+              }}>
+                <div style={{
+                  background: 'rgba(22,22,28,0.94)', borderRadius: 10,
+                  padding: '8px 12px', border: `1px solid ${hs.barColor}50`,
+                  minWidth: 84, textAlign: 'center',
+                  boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 2 }}>
+                    <CondIcon condition={hm.condition} size={11} color={hs.barColor} />
+                    <span style={{ fontSize: 10, fontWeight: 700, color: hs.barColor, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{hs.label}</span>
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{hTemp}{tempUnit}</div>
+                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 3 }}>
+                    {hoveredMin === nowMin ? 'now' : `+${hoveredMin - nowMin} min`}
+                  </div>
+                </div>
+                <div style={{
+                  position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+                  borderLeft: '5px solid transparent', borderRight: '5px solid transparent',
+                  borderTop: '5px solid rgba(22,22,28,0.94)',
+                }} />
+              </div>
             );
           })()}
 
-          <div style={{
-            position: 'absolute', top: 0, bottom: 0,
-            left: `calc(${(nowMin / 59) * 100}% - 1px)`,
-            width: 2, background: '#1a1a1a', borderRadius: 1,
-            transition: 'left 0.35s ease',
-          }}>
+          <div
+            ref={timelineRef}
+            onClick={handleTimelineInteract}
+            onTouchMove={handleTimelineInteract}
+            onMouseMove={(e) => {
+              const rect = timelineRef.current!.getBoundingClientRect();
+              setHoveredMin(Math.round(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * 59));
+            }}
+            onMouseLeave={() => setHoveredMin(null)}
+            style={{ width: '100%', height: 56, cursor: 'crosshair', background: 'rgba(0,0,0,0.04)', borderRadius: 10, overflow: 'hidden', position: 'relative' }}
+          >
+            <div style={{ display: 'flex', height: '100%', alignItems: 'flex-end', gap: 1.5, padding: '0 2px' }}>
+              {forecast.map((m, i) => {
+                const s = getStyle(m.condition, m.precip);
+                const barH = m.precip > 0 ? 14 + m.precip * 48 : 5;
+                return (
+                  <div key={i} style={{
+                    flex: 1, minWidth: 2, height: `${Math.round(barH)}px`,
+                    background: s.barColor, borderRadius: '3px 3px 0 0',
+                    opacity: i < nowMin ? 0.15 : hoveredMin === i ? 1 : 0.75,
+                    transition: 'opacity 0.12s',
+                  }} />
+                );
+              })}
+            </div>
+
+            {/* Best dry window highlight */}
+            {bestWindow && (
+              <div style={{
+                position: 'absolute', top: 0, bottom: 0,
+                left: `${(bestWindow.start / 59) * 100}%`,
+                width: `${((bestWindow.end - bestWindow.start + 1) / 59) * 100}%`,
+                background: 'rgba(61,158,95,0.13)',
+                borderLeft: '1.5px solid rgba(61,158,95,0.55)',
+                borderRight: '1.5px solid rgba(61,158,95,0.55)',
+                pointerEvents: 'none',
+              }} />
+            )}
+
+            {/* Condition transition markers */}
+            {transitions.map(t => {
+              const ts = getStyle(t.toCondition, 0.5);
+              return (
+                <div key={t.minute} style={{
+                  position: 'absolute', top: 0, bottom: 0,
+                  left: `${(t.minute / 59) * 100}%`,
+                  width: 1, background: `${ts.barColor}90`,
+                  pointerEvents: 'none',
+                }}>
+                  <div style={{
+                    position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)',
+                    fontSize: 7, fontWeight: 700, color: ts.textAccent,
+                    background: 'rgba(255,255,255,0.82)', borderRadius: 3,
+                    padding: '1px 3px', letterSpacing: '0.04em', whiteSpace: 'nowrap',
+                    textTransform: 'uppercase',
+                  }}>{ts.label.slice(0, 5)}</div>
+                </div>
+              );
+            })}
+
+            {/* Temperature sparkline overlay */}
+            {(() => {
+              const temps = forecast.map(m => m.temp);
+              const tMin = Math.min(...temps), tMax = Math.max(...temps);
+              const tRange = Math.max(tMax - tMin, 0.5);
+              const pts = temps.map((t, i) => `${i + 0.5},${50 - ((t - tMin) / tRange) * 34}`).join(' ');
+              return (
+                <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+                  viewBox="0 0 60 56" preserveAspectRatio="none">
+                  <polyline points={pts} fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              );
+            })()}
+
             <div style={{
-              position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)',
-              width: 7, height: 7, borderRadius: '50%', background: '#1a1a1a',
-              animation: 'nowBlink 2s ease-in-out infinite',
-            }} />
+              position: 'absolute', top: 0, bottom: 0,
+              left: `calc(${(nowMin / 59) * 100}% - 1px)`,
+              width: 2, background: '#1a1a1a', borderRadius: 1,
+              transition: 'left 0.35s ease',
+            }}>
+              <div style={{
+                position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)',
+                width: 7, height: 7, borderRadius: '50%', background: '#1a1a1a',
+                animation: 'nowBlink 2s ease-in-out infinite',
+              }} />
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, padding: '0 1px' }}>
