@@ -90,16 +90,25 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
     const isDry = (c: MinuteForecast['condition']) => c === 'clear' || c === 'clearing';
     for (let i = nowMin + 1; i < 60; i++) {
       const cond = forecast[i].condition;
-      if (isDry(current.condition) && isWet(cond))
-        return `${cond === 'rain' ? 'Rain' : 'Drizzle'} starting in ${i - nowMin} min`;
-      if (isWet(current.condition) && isDry(cond))
-        return `Clears up in ${i - nowMin} min`;
+      if (isDry(current.condition) && isWet(cond)) {
+        const mins = i - nowMin;
+        const label = cond === 'rain' ? 'Rain' : 'Drizzle';
+        if (mins <= 5) return `${label} arriving — head in soon`;
+        if (mins <= 12) return `${label} in ${mins} min — wrap up outside`;
+        return `${label} expected in ${mins} min`;
+      }
+      if (isWet(current.condition) && isDry(cond)) {
+        const mins = i - nowMin;
+        if (mins <= 5) return 'Clearing up any moment now';
+        if (mins <= 15) return `Clears in ${mins} min — hang tight`;
+        return `Should clear in about ${mins} min`;
+      }
       if (current.condition === 'drizzle' && cond === 'rain')
-        return `Heavier rain in ${i - nowMin} min`;
+        return `Rain intensifying in ${i - nowMin} min`;
       if (current.condition === 'rain' && cond === 'drizzle')
-        return `Easing to drizzle in ${i - nowMin} min`;
+        return `Rain easing up in ${i - nowMin} min`;
     }
-    if (isDry(current.condition)) return 'Clear skies for the rest of the hour';
+    if (isDry(current.condition)) return 'Clear skies for the next hour';
     if (current.condition === 'drizzle') return 'Light drizzle through the hour';
     return 'Rain continues through the hour';
   })();
@@ -165,6 +174,9 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
   const isStale = lastUpdated != null && (Date.now() - lastUpdated.getTime()) > 25 * 60 * 1000;
   const windLabel = windBearing != null ? `${bearingToDir(windBearing)} ${displayWind}` : `${displayWind}`;
 
+  const isRaining = current.condition === 'rain' || current.condition === 'drizzle';
+  const dropCount = current.condition === 'rain' ? 22 : 13;
+
   return (
     <div style={{
       width: '100%', height: '100%',
@@ -172,10 +184,29 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
       display: 'flex', flexDirection: 'column',
       transition: 'background 0.9s ease',
       overflow: 'hidden',
+      position: 'relative',
     }}>
 
+      {/* RAIN ANIMATION OVERLAY */}
+      {isRaining && (
+        <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0 }}>
+          {Array.from({ length: dropCount }).map((_, i) => (
+            <div key={i} style={{
+              position: 'absolute',
+              left: `${(i * 23 + 5) % 101}%`,
+              top: `-${10 + (i * 7) % 40}%`,
+              width: current.condition === 'rain' ? '1px' : '0.75px',
+              height: `${(current.condition === 'rain' ? 18 : 11) + (i % 4) * 4}px`,
+              background: `rgba(100, 130, 185, ${0.22 + (i % 5) * 0.05})`,
+              borderRadius: '1px',
+              animation: `rainDrop ${0.62 + (i % 9) * 0.08}s linear ${-(i * 0.31) % 2.1}s infinite`,
+            }} />
+          ))}
+        </div>
+      )}
+
       {/* HEADER */}
-      <div style={{ padding: 'var(--top-safe) 22px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ padding: 'var(--top-safe) 22px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -202,7 +233,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
       </div>
 
       {/* HERO */}
-      <div style={{ padding: '20px 22px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+      <div style={{ padding: '20px 22px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
         <div>
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -229,7 +260,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
       </div>
 
       {/* NEXT EVENT CALLOUT */}
-      <div style={{ margin: '20px 22px 0' }}>
+      <div style={{ margin: '20px 22px 0', position: 'relative', zIndex: 1 }}>
         <div style={{
           background: 'rgba(255,255,255,0.85)', borderRadius: 14, padding: '12px 16px',
           border: `1.5px solid ${cs.accent}28`,
@@ -262,7 +293,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
       </div>
 
       {/* 60-MIN TIMELINE */}
-      <div style={{ margin: '18px 0 0', padding: '0 22px' }}>
+      <div style={{ margin: '18px 0 0', padding: '0 22px', position: 'relative', zIndex: 1 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <span style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500 }}>Next hour</span>
           <span style={{ fontSize: 11, color: hoveredMin !== null ? cs.textAccent : '#bbb', fontFamily: 'monospace', transition: 'color 0.2s' }}>
@@ -294,6 +325,20 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
               );
             })}
           </div>
+          {/* Temperature sparkline overlay */}
+          {(() => {
+            const temps = forecast.map(m => m.temp);
+            const tMin = Math.min(...temps), tMax = Math.max(...temps);
+            const tRange = Math.max(tMax - tMin, 0.5);
+            const pts = temps.map((t, i) => `${i + 0.5},${50 - ((t - tMin) / tRange) * 34}`).join(' ');
+            return (
+              <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+                viewBox="0 0 60 56" preserveAspectRatio="none">
+                <polyline points={pts} fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            );
+          })()}
+
           <div style={{
             position: 'absolute', top: 0, bottom: 0,
             left: `calc(${(nowMin / 59) * 100}% - 1px)`,
@@ -317,7 +362,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
       </div>
 
       {/* SCROLLABLE LOWER SECTION */}
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'var(--bottom-safe)', marginTop: 18 }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'var(--bottom-safe)', marginTop: 18, position: 'relative', zIndex: 1 }}>
 
         {/* HOURLY FORECAST with sunrise/sunset markers */}
         {hourlyForecast.length > 0 && (

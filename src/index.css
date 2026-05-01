@@ -48,3 +48,10 @@ html, body {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+
+@keyframes rainDrop {
+  0%   { transform: translateY(0) skewX(-12deg); opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 0.8; }
+  100% { transform: translateY(115vh) skewX(-12deg); opacity: 0; }
+}
