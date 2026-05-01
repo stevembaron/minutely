@@ -431,21 +431,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
               );
             })}
 
-            {/* Temperature sparkline overlay */}
-            {(() => {
-              const temps = forecast.map(m => m.temp);
-              const tMin = Math.min(...temps), tMax = Math.max(...temps);
-              const tRange = Math.max(tMax - tMin, 0.5);
-              const pts = temps.map((t, i) => `${i + 0.5},${50 - ((t - tMin) / tRange) * 34}`).join(' ');
-              return (
-                <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-                  viewBox="0 0 60 56" preserveAspectRatio="none">
-                  <polyline points={pts} fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              );
-            })()}
-
-            <div style={{
+<div style={{
               position: 'absolute', top: 0, bottom: 0,
               left: `calc(${(nowMin / 59) * 100}% - 1px)`,
               width: 2, background: '#1a1a1a', borderRadius: 1,
