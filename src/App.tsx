@@ -29,6 +29,8 @@ export default function App() {
   }));
   const [currentConditions, setCurrentConditions] = useState<CurrentConditions | null>(null);
   const [hourlyForecast, setHourlyForecast] = useState<HourlyForecast[]>([]);
+  const [sunriseTime, setSunriseTime] = useState<Date | undefined>();
+  const [sunsetTime, setSunsetTime] = useState<Date | undefined>();
   const [exiting, setExiting] = useState(false);
   const [, setUsingLive] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -53,6 +55,8 @@ export default function App() {
       setForecast(result.forecast);
       setCurrentConditions(result.current);
       setHourlyForecast(result.hourly);
+      setSunriseTime(result.sunriseTime);
+      setSunsetTime(result.sunsetTime);
       setNowMin(0);
       setUsingLive(true);
       setLastUpdated(new Date());
@@ -73,6 +77,8 @@ export default function App() {
       setForecast(result.forecast);
       setCurrentConditions(result.current);
       setHourlyForecast(result.hourly);
+      setSunriseTime(result.sunriseTime);
+      setSunsetTime(result.sunsetTime);
       setNowMin(0);
       setUsingLive(true);
       setLastUpdated(new Date());
@@ -122,6 +128,8 @@ export default function App() {
           setNowMin={setNowMin}
           forecast={adjustedForecast}
           hourlyForecast={hourlyForecast}
+          sunriseTime={sunriseTime}
+          sunsetTime={sunsetTime}
           location={location}
           currentConditions={currentConditions}
           settings={settings}

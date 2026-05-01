@@ -9,6 +9,8 @@ interface Props {
   setNowMin: (n: number) => void;
   forecast: MinuteForecast[];
   hourlyForecast: HourlyForecast[];
+  sunriseTime?: Date;
+  sunsetTime?: Date;
   location: string;
   currentConditions: CurrentConditions | null;
   settings: Settings;
@@ -34,7 +36,34 @@ function hourLabel(d: Date): string {
   return `${h}${d.getHours() < 12 ? 'a' : 'p'}`;
 }
 
-export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyForecast, location, currentConditions, settings, lastUpdated, refreshing, fetchError, onRefresh }: Props) {
+function shortTime(d: Date): string {
+  const h = d.getHours() % 12 || 12;
+  const m = d.getMinutes();
+  return m === 0 ? `${h}${d.getHours() < 12 ? 'am' : 'pm'}` : `${h}:${d.getMinutes().toString().padStart(2,'0')}${d.getHours() < 12 ? 'am' : 'pm'}`;
+}
+
+function bearingToDir(deg: number): string {
+  return ['N','NE','E','SE','S','SW','W','NW'][Math.round(deg / 45) % 8];
+}
+
+function timeOfDayBackground(bg: string): string {
+  const h = new Date().getHours();
+  if (h >= 21 || h < 5)
+    return `linear-gradient(180deg, rgba(10,8,30,0.09) 0%, rgba(10,8,30,0.04) 100%), ${bg}`;
+  if (h >= 5 && h < 7)
+    return `linear-gradient(180deg, rgba(255,190,80,0.07) 0%, ${bg} 60%)`;
+  if (h >= 17 && h < 20)
+    return `linear-gradient(180deg, ${bg} 30%, rgba(255,120,40,0.08) 100%)`;
+  if (h >= 20 && h < 21)
+    return `linear-gradient(180deg, ${bg} 0%, rgba(20,12,50,0.07) 100%)`;
+  return bg;
+}
+
+type HourlyItem =
+  | { type: 'hour'; data: HourlyForecast; index: number }
+  | { type: 'sun'; event: 'sunrise' | 'sunset'; time: Date };
+
+export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyForecast, sunriseTime, sunsetTime, location, currentConditions, settings, lastUpdated, refreshing, fetchError, onRefresh }: Props) {
   const current = forecast[nowMin];
   const cs = getStyle(current.condition, current.precip);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -82,11 +111,12 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
     setNowMin(Math.round(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * 59));
   }, [setNowMin]);
 
-  const feelsLikeF = currentConditions?.feelsLike ?? Math.round(current.temp - current.precip * 5);
-  const windMph    = currentConditions?.windSpeed  ?? (current.condition === 'rain' ? 14 : current.condition === 'drizzle' ? 8 : 4);
-  const humidity   = currentConditions?.humidity   ?? (current.condition === 'rain' ? 91 : current.condition === 'drizzle' ? 79 : 54);
-  const uvIndex    = currentConditions?.uvIndex    ?? (current.condition === 'clear' ? 4 : 1);
-  const visMi      = currentConditions?.visibility ?? (current.condition === 'rain' ? 1 : 10);
+  const feelsLikeF  = currentConditions?.feelsLike   ?? Math.round(current.temp - current.precip * 5);
+  const windMph     = currentConditions?.windSpeed    ?? (current.condition === 'rain' ? 14 : current.condition === 'drizzle' ? 8 : 4);
+  const windBearing = currentConditions?.windBearing;
+  const humidity    = currentConditions?.humidity     ?? (current.condition === 'rain' ? 91 : current.condition === 'drizzle' ? 79 : 54);
+  const uvIndex     = currentConditions?.uvIndex      ?? (current.condition === 'clear' ? 4 : 1);
+  const visMi       = currentConditions?.visibility   ?? (current.condition === 'rain' ? 1 : 10);
 
   const displayTemp     = useCelsius ? fToC(current.temp) : Math.round(current.temp);
   const displayFeels    = useCelsius ? fToC(feelsLikeF) : feelsLikeF;
@@ -95,9 +125,24 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
   const displayVis      = useKph ? `${miToKm(visMi)}km` : `${visMi}mi`;
   const tempUnit        = settings.tempUnit;
 
-  const todayTemps = hourlyForecast.slice(0, 24).map(h => useCelsius ? fToC(h.temp) : Math.round(h.temp));
-  const highTemp = todayTemps.length > 0 ? Math.max(...todayTemps) : null;
-  const lowTemp  = todayTemps.length > 0 ? Math.min(...todayTemps) : null;
+  // H/L: prefer from daily API, fall back to hourly range
+  const apiHigh = currentConditions?.highTemp != null ? (useCelsius ? fToC(currentConditions.highTemp) : currentConditions.highTemp) : null;
+  const apiLow  = currentConditions?.lowTemp  != null ? (useCelsius ? fToC(currentConditions.lowTemp)  : currentConditions.lowTemp)  : null;
+  const hourlyTemps = hourlyForecast.slice(0, 24).map(h => useCelsius ? fToC(h.temp) : Math.round(h.temp));
+  const highTemp = apiHigh ?? (hourlyTemps.length > 0 ? Math.max(...hourlyTemps) : null);
+  const lowTemp  = apiLow  ?? (hourlyTemps.length > 0 ? Math.min(...hourlyTemps) : null);
+
+  // Build hourly items, inserting sunrise/sunset markers between the right hours
+  const hourlyItems: HourlyItem[] = [];
+  for (let i = 0; i < hourlyForecast.length; i++) {
+    const h = hourlyForecast[i];
+    const prev = hourlyForecast[i - 1];
+    if (prev && sunriseTime && sunriseTime > prev.time && sunriseTime <= h.time)
+      hourlyItems.push({ type: 'sun', event: 'sunrise', time: sunriseTime });
+    if (prev && sunsetTime && sunsetTime > prev.time && sunsetTime <= h.time)
+      hourlyItems.push({ type: 'sun', event: 'sunset', time: sunsetTime });
+    hourlyItems.push({ type: 'hour', data: h, index: i });
+  }
 
   const condLabelMap: Record<string, string> = { rain: 'Rain', drizzle: 'Drizzle', clearing: 'Clearing', clear: 'Clear' };
   const baseDescMap: Record<string, string> = { rain: 'Keep an umbrella handy', drizzle: 'Light mist in the air', clearing: 'Skies brightening', clear: 'Great time to head out' };
@@ -110,30 +155,27 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
   })();
 
   function chunkDesc(condition: string, isNow: boolean): string {
-    if (isNow && (condition === 'clear' || condition === 'clearing') && minsUntilWet !== null) {
+    if (isNow && (condition === 'clear' || condition === 'clearing') && minsUntilWet !== null)
       return minsUntilWet <= 15 ? 'Enjoy it while it lasts' : 'Make the most of it';
-    }
     if (isNow && condition === 'clearing' && minsUntilWet === null) return 'Skies brightening';
     return baseDescMap[condition] ?? '';
   }
+
   const uvLabel = uvIndex <= 2 ? 'Low' : uvIndex <= 5 ? 'Moderate' : uvIndex <= 7 ? 'High' : 'Very High';
   const isStale = lastUpdated != null && (Date.now() - lastUpdated.getTime()) > 25 * 60 * 1000;
+  const windLabel = windBearing != null ? `${bearingToDir(windBearing)} ${displayWind}` : `${displayWind}`;
 
   return (
     <div style={{
       width: '100%', height: '100%',
-      background: cs.bg,
+      background: timeOfDayBackground(cs.bg),
       display: 'flex', flexDirection: 'column',
       transition: 'background 0.9s ease',
       overflow: 'hidden',
     }}>
 
       {/* HEADER */}
-      <div style={{
-        padding: 'var(--top-safe) 22px 0',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-      }}>
-        {/* Logo + location */}
+      <div style={{ padding: 'var(--top-safe) 22px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -147,13 +189,10 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
             {location ? location.split(',')[0] : 'My Location'}
           </div>
         </div>
-
-        {/* Settings pill */}
         <button onClick={onSettings} style={{
           background: 'rgba(255,255,255,0.75)', border: '1px solid rgba(0,0,0,0.09)',
-          borderRadius: 20, padding: '7px 10px',
-          cursor: 'pointer', fontFamily: 'inherit',
-          display: 'flex', alignItems: 'center', gap: 6,
+          borderRadius: 20, padding: '7px 10px', cursor: 'pointer', fontFamily: 'inherit',
+          display: 'flex', alignItems: 'center',
         }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round">
             <circle cx="12" cy="12" r="3"/>
@@ -165,43 +204,25 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
       {/* HERO */}
       <div style={{ padding: '20px 22px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
         <div>
-          {/* Condition badge */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             background: cs.accent + '18', borderRadius: 6,
-            padding: '4px 10px 4px 7px', marginBottom: 14,
-            transition: 'background 0.8s',
+            padding: '4px 10px 4px 7px', marginBottom: 14, transition: 'background 0.8s',
           }}>
             <CondIcon condition={current.condition} size={13} color={cs.accent} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: cs.textAccent, letterSpacing: '0.07em', textTransform: 'uppercase' }}>
-              {cs.label}
-            </span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: cs.textAccent, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{cs.label}</span>
           </div>
-
-          {/* Temperature */}
           <div style={{ display: 'flex', alignItems: 'flex-start', lineHeight: 1 }}>
-            <div style={{ fontSize: 88, fontWeight: 300, color: '#1a1a1a', letterSpacing: '-0.04em' }}>
-              {displayTemp}
-            </div>
-            <div style={{ fontSize: 38, fontWeight: 300, color: '#1a1a1a', marginTop: 12, marginLeft: 2 }}>
-              {tempUnit}
-            </div>
+            <div style={{ fontSize: 88, fontWeight: 300, color: '#1a1a1a', letterSpacing: '-0.04em' }}>{displayTemp}</div>
+            <div style={{ fontSize: 38, fontWeight: 300, color: '#1a1a1a', marginTop: 12, marginLeft: 2 }}>{tempUnit}</div>
           </div>
-
-          {/* Feels like + high/low */}
           <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <div style={{ color: '#888', fontSize: 13, fontWeight: 400 }}>
-              Feels like {displayFeels}° · {humidity}% humidity
-            </div>
+            <div style={{ color: '#888', fontSize: 13 }}>Feels like {displayFeels}° · {humidity}% humidity</div>
             {highTemp !== null && lowTemp !== null && (
-              <div style={{ color: '#aaa', fontSize: 12 }}>
-                H: {highTemp}° &nbsp; L: {lowTemp}°
-              </div>
+              <div style={{ color: '#aaa', fontSize: 12 }}>H: {highTemp}° &nbsp; L: {lowTemp}°</div>
             )}
           </div>
         </div>
-
-        {/* Big condition icon */}
         <div style={{ paddingBottom: 28, opacity: 0.75, flexShrink: 0 }}>
           <CondIcon condition={current.condition} size={54} color={cs.accent} />
         </div>
@@ -213,7 +234,6 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
           background: 'rgba(255,255,255,0.85)', borderRadius: 14, padding: '12px 16px',
           border: `1.5px solid ${cs.accent}28`,
           display: 'flex', alignItems: 'center', gap: 10,
-          backdropFilter: 'blur(8px)',
           transition: 'border-color 0.8s',
         }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: cs.barColor, flexShrink: 0 }} />
@@ -221,8 +241,7 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
           <button onClick={onRefresh} disabled={refreshing} style={{
             background: 'none', border: 'none', cursor: refreshing ? 'default' : 'pointer',
             padding: 4, color: '#ccc', display: 'flex', alignItems: 'center',
-            opacity: refreshing ? 0.4 : 1, transition: 'opacity 0.2s',
-            flexShrink: 0,
+            opacity: refreshing ? 0.4 : 1, transition: 'opacity 0.2s', flexShrink: 0,
           }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
               style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>
@@ -247,12 +266,9 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <span style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500 }}>Next hour</span>
           <span style={{ fontSize: 11, color: hoveredMin !== null ? cs.textAccent : '#bbb', fontFamily: 'monospace', transition: 'color 0.2s' }}>
-            {hoveredMin !== null
-              ? `${timeLabel(hoveredMin - nowMin)} · +${hoveredMin - nowMin}min`
-              : `${timeLabel(0)} → ${timeLabel(60 - nowMin, true)}`}
+            {hoveredMin !== null ? `${timeLabel(hoveredMin - nowMin)} · +${hoveredMin - nowMin}min` : `${timeLabel(0)} → ${timeLabel(60 - nowMin, true)}`}
           </span>
         </div>
-
         <div
           ref={timelineRef}
           onClick={handleTimelineInteract}
@@ -291,7 +307,6 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
             }} />
           </div>
         </div>
-
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, padding: '0 1px' }}>
           {[0, 15, 30, 45, 60].map(t => (
             <span key={t} style={{ fontSize: 10, color: '#bbb', fontFamily: 'monospace' }}>
@@ -304,33 +319,75 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
       {/* SCROLLABLE LOWER SECTION */}
       <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'var(--bottom-safe)', marginTop: 18 }}>
 
-        {/* HOURLY FORECAST */}
+        {/* HOURLY FORECAST with sunrise/sunset markers */}
         {hourlyForecast.length > 0 && (
           <div style={{ marginBottom: 16 }}>
             <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, margin: '0 22px 10px' }}>
               24-hour forecast
             </div>
             <div className="hourly-scroll" style={{ overflowX: 'auto', paddingLeft: 22, paddingRight: 22 }}>
-              <div style={{ display: 'flex', gap: 8, paddingBottom: 4 }}>
-                {hourlyForecast.map((h, i) => {
+              <div style={{ display: 'flex', gap: 8, paddingBottom: 4, alignItems: 'flex-end' }}>
+                {hourlyItems.map((item, idx) => {
+                  if (item.type === 'sun') {
+                    const isSunrise = item.event === 'sunrise';
+                    return (
+                      <div key={`sun-${idx}`} style={{
+                        flexShrink: 0, width: 46,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center',
+                        gap: 4, paddingBottom: 10, opacity: 0.7,
+                      }}>
+                        <div style={{ width: 1, height: 28, background: 'rgba(0,0,0,0.1)', borderRadius: 1 }} />
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d4a017" strokeWidth="2" strokeLinecap="round">
+                          {isSunrise ? (
+                            <>
+                              <path d="M12 2v2M4.93 4.93l1.41 1.41M2 12h2M19.07 4.93l-1.41 1.41M22 12h-2"/>
+                              <path d="M5 17H3M21 17h-2M12 10a5 5 0 0 1 5 5H7a5 5 0 0 1 5-5z"/>
+                              <polyline points="12 7 12 10"/>
+                            </>
+                          ) : (
+                            <>
+                              <path d="M12 22v-2M4.93 19.07l1.41-1.41M2 12h2M19.07 19.07l-1.41-1.41M22 12h-2"/>
+                              <path d="M5 7H3M21 7h-2M12 14a5 5 0 0 0 5-5H7a5 5 0 0 0 5 5z"/>
+                            </>
+                          )}
+                        </svg>
+                        <div style={{ fontSize: 9, color: '#b88512', fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>
+                          {isSunrise ? 'Rise' : 'Set'}<br/>
+                          <span style={{ fontWeight: 400, color: '#aaa' }}>{shortTime(item.time)}</span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  const h = item.data;
                   const hs = getStyle(h.condition, h.precip);
                   const displayHTemp = useCelsius ? fToC(h.temp) : Math.round(h.temp);
-                  const isNowHour = i === 0;
+                  const isNowHour = item.index === 0;
+                  const barPct = h.precipProb / 100;
                   return (
-                    <div key={i} style={{
-                      flexShrink: 0, width: 60,
+                    <div key={`h-${item.index}`} style={{
+                      flexShrink: 0, width: 58,
                       background: isNowHour ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.5)',
-                      borderRadius: 14, padding: '11px 0 10px',
+                      borderRadius: 14,
                       border: isNowHour ? `1.5px solid ${cs.accent}35` : '1.5px solid transparent',
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                      display: 'flex', flexDirection: 'column', alignItems: 'center',
+                      overflow: 'hidden',
                     }}>
-                      <div style={{ fontSize: 11, color: isNowHour ? cs.textAccent : '#999', fontWeight: isNowHour ? 700 : 400 }}>
-                        {isNowHour ? 'now' : hourLabel(h.time)}
+                      <div style={{ padding: '11px 0 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, width: '100%' }}>
+                        <div style={{ fontSize: 11, color: isNowHour ? cs.textAccent : '#999', fontWeight: isNowHour ? 700 : 400 }}>
+                          {isNowHour ? 'now' : hourLabel(h.time)}
+                        </div>
+                        <CondIcon condition={h.condition} size={15} color={hs.accent} />
+                        <div style={{ fontSize: 13, fontWeight: 600, color: '#1a1a1a' }}>{displayHTemp}°</div>
                       </div>
-                      <CondIcon condition={h.condition} size={16} color={hs.accent} />
-                      <div style={{ fontSize: 14, fontWeight: 500, color: '#1a1a1a' }}>{displayHTemp}°</div>
-                      <div style={{ fontSize: 10, color: h.precipProb > 10 ? hs.textAccent : 'transparent', fontWeight: 500, minHeight: 14 }}>
-                        {h.precipProb > 10 ? `${h.precipProb}%` : ''}
+                      {/* Mini precip probability bar */}
+                      <div style={{ width: '100%', height: 4, background: 'rgba(0,0,0,0.05)' }}>
+                        {barPct > 0.05 && (
+                          <div style={{
+                            height: '100%', width: `${Math.round(barPct * 100)}%`,
+                            background: hs.barColor, opacity: 0.7,
+                            borderRadius: '0 2px 2px 0',
+                          }} />
+                        )}
                       </div>
                     </div>
                   );
@@ -340,11 +397,9 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
           </div>
         )}
 
-        {/* DETAIL CARD: What to expect + stats */}
+        {/* DETAIL CARD */}
         <div style={{ margin: '0 22px' }}>
           <div style={{ background: 'rgba(255,255,255,0.7)', borderRadius: 18, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.06)' }}>
-
-            {/* Story chunks */}
             <div style={{ padding: '4px 16px 0' }}>
               <div style={{ fontSize: 11, color: '#aaa', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, padding: '12px 0 8px' }}>
                 What to expect
@@ -372,14 +427,10 @@ export function HomeScreen({ onSettings, nowMin, setNowMin, forecast, hourlyFore
                 );
               })}
             </div>
-
-            {/* Divider */}
             <div style={{ height: 1, background: 'rgba(0,0,0,0.07)', margin: '4px 0' }} />
-
-            {/* Stats row */}
             <div style={{ display: 'flex', padding: '14px 0 16px' }}>
               {[
-                { label: 'Wind',  value: `${displayWind} ${displayWindUnit}` },
+                { label: 'Wind',  value: `${windLabel} ${displayWindUnit}` },
                 { label: 'Humid', value: `${humidity}%` },
                 { label: 'UV',    value: `${uvIndex} · ${uvLabel}` },
                 { label: 'Vis',   value: displayVis },

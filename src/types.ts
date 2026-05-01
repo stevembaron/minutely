@@ -8,11 +8,14 @@ export interface MinuteForecast {
 }
 
 export interface CurrentConditions {
-  windSpeed: number;   // mph
-  humidity: number;    // 0–100
+  windSpeed: number;    // mph
+  windBearing?: number; // degrees 0–360
+  humidity: number;     // 0–100
   uvIndex: number;
-  visibility: number;  // miles
-  feelsLike: number;   // °F
+  visibility: number;   // miles
+  feelsLike: number;    // °F
+  highTemp?: number;    // °F, today's high from daily
+  lowTemp?: number;     // °F, today's low from daily
 }
 
 export interface LocationInfo {

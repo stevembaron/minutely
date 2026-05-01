@@ -112,6 +112,8 @@ export interface LiveData {
   forecast: MinuteForecast[];
   current: CurrentConditions;
   hourly: HourlyForecast[];
+  sunriseTime?: Date;
+  sunsetTime?: Date;
 }
 
 function kphToMph(kph: number): number { return kph * 0.621371; }
@@ -119,7 +121,7 @@ function kmToMiles(km: number): number { return km * 0.621371; }
 
 export async function fetchLiveData(lat: number, lng: number): Promise<LiveData | null> {
   try {
-    const url = `https://api.pirateweather.net/forecast/${API_KEY}/${lat},${lng}?exclude=daily,alerts&units=ca`;
+    const url = `https://api.pirateweather.net/forecast/${API_KEY}/${lat},${lng}?exclude=alerts&units=ca`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
@@ -131,13 +133,20 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
     const currentPrecip: number = c.precipIntensity ?? 0;
     const currentCondition = iconToCondition(currentIcon, currentPrecip);
 
+    const daily0 = data.daily?.data?.[0] ?? {};
     const current: CurrentConditions = {
-      windSpeed: Math.round(kphToMph(c.windSpeed ?? 0)),
-      humidity:  Math.round((c.humidity ?? 0.5) * 100),
-      uvIndex:   Math.round(c.uvIndex ?? 0),
-      visibility: Math.round(kmToMiles(c.visibility ?? 16)),
-      feelsLike: Math.round(celsiusToFahrenheit(c.apparentTemperature ?? currentTempC)),
+      windSpeed:   Math.round(kphToMph(c.windSpeed ?? 0)),
+      windBearing: c.windBearing != null ? Math.round(c.windBearing) : undefined,
+      humidity:    Math.round((c.humidity ?? 0.5) * 100),
+      uvIndex:     Math.round(c.uvIndex ?? 0),
+      visibility:  Math.round(kmToMiles(c.visibility ?? 16)),
+      feelsLike:   Math.round(celsiusToFahrenheit(c.apparentTemperature ?? currentTempC)),
+      highTemp:    daily0.temperatureHigh != null ? Math.round(celsiusToFahrenheit(daily0.temperatureHigh)) : undefined,
+      lowTemp:     daily0.temperatureLow  != null ? Math.round(celsiusToFahrenheit(daily0.temperatureLow))  : undefined,
     };
+
+    const sunriseTime = daily0.sunriseTime ? new Date(daily0.sunriseTime * 1000) : undefined;
+    const sunsetTime  = daily0.sunsetTime  ? new Date(daily0.sunsetTime  * 1000) : undefined;
 
     let forecast: MinuteForecast[] | null = null;
 
@@ -175,7 +184,7 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
       };
     });
 
-    return { forecast, current, hourly };
+    return { forecast, current, hourly, sunriseTime, sunsetTime };
   } catch (err) {
     console.error('Pirate Weather error:', err);
     return null;
