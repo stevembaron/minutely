@@ -184,6 +184,7 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
     const daily0 = data.daily?.data?.[0] ?? {};
     const current: CurrentConditions = {
       windSpeed:   Math.round(kphToMph(c.windSpeed ?? 0)),
+      windGust:    c.windGust != null ? Math.round(kphToMph(c.windGust)) : undefined,
       windBearing: c.windBearing != null ? Math.round(c.windBearing) : undefined,
       humidity:    Math.round((c.humidity ?? 0.5) * 100),
       uvIndex:     Math.round(c.uvIndex ?? 0),
@@ -191,6 +192,10 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
       feelsLike:   Math.round(celsiusToFahrenheit(c.apparentTemperature ?? currentTempC)),
       highTemp:    daily0.temperatureHigh != null ? Math.round(celsiusToFahrenheit(daily0.temperatureHigh)) : undefined,
       lowTemp:     daily0.temperatureLow  != null ? Math.round(celsiusToFahrenheit(daily0.temperatureLow))  : undefined,
+      pressure:    c.pressure != null ? Math.round(c.pressure) : undefined,
+      // units=ca returns nearestStormDistance in km; convert to miles for internal storage
+      nearestStormDistance: c.nearestStormDistance != null ? Math.round(kmToMiles(c.nearestStormDistance)) : undefined,
+      nearestStormBearing:  c.nearestStormBearing  != null ? Math.round(c.nearestStormBearing)  : undefined,
     };
 
     const sunriseTime = daily0.sunriseTime ? new Date(daily0.sunriseTime * 1000) : undefined;
@@ -238,6 +243,24 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
     return { forecast, current, hourly, sunriseTime, sunsetTime };
   } catch (err) {
     console.error('Pirate Weather error:', err);
+    return null;
+  }
+}
+
+// Fetch the temperature at this exact wall-clock time on the previous day
+// (uses Pirate Weather's time-machine endpoint).
+export async function fetchYesterdayTemp(lat: number, lng: number): Promise<number | null> {
+  try {
+    const ts = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000);
+    const url = `https://api.pirateweather.net/forecast/${API_KEY}/${lat},${lng},${ts}?exclude=alerts,minutely,daily&units=ca`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const tempC = data.currently?.temperature;
+    if (tempC == null) return null;
+    return celsiusToFahrenheit(tempC);
+  } catch (err) {
+    console.error('Pirate Weather time-machine error:', err);
     return null;
   }
 }

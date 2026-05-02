@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react';
 import type { Settings } from '../types';
+import { ensureNotificationPermission } from '../notifications';
 
 interface Props {
   onBack: () => void;
@@ -69,8 +71,24 @@ function SegPicker({ options, value, onChange, dark }: { options: string[]; valu
 }
 
 export function SettingsScreen({ onBack, settings, setSettings, onAdmin, onLocations, currentLocation, darkMode = false }: Props) {
+  const [notifPerm, setNotifPerm] = useState<NotificationPermission | 'unsupported'>(() =>
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
+  );
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    const i = setInterval(() => setNotifPerm(Notification.permission), 1500);
+    return () => clearInterval(i);
+  }, []);
+
   const set = (k: keyof Settings, v: Settings[keyof Settings]) => setSettings(s => ({ ...s, [k]: v }));
-  const toggle = (k: keyof Settings) => setSettings(s => ({ ...s, [k]: !s[k] }));
+  const toggleAlert = async (k: 'alertRain' | 'alertClear' | 'alertWorsen') => {
+    const turningOn = !settings[k];
+    setSettings(s => ({ ...s, [k]: turningOn }));
+    if (turningOn) {
+      const granted = await ensureNotificationPermission();
+      setNotifPerm(granted ? 'granted' : Notification.permission);
+    }
+  };
 
   const bg = darkMode ? '#111318' : '#f7f5f2';
   const card = darkMode ? '#1c1c28' : '#fff';
@@ -117,15 +135,30 @@ export function SettingsScreen({ onBack, settings, setSettings, onAdmin, onLocat
         <SectionLabel dark={darkMode}>Alerts</SectionLabel>
         <div style={{ background: card, borderRadius: 12, border: `1.5px solid ${border}` }}>
           <Row label="Rain starting soon" sub="5 minutes before precipitation" dark={darkMode}>
-            <Toggle on={settings.alertRain} onToggle={() => toggle('alertRain')} />
+            <Toggle on={settings.alertRain} onToggle={() => toggleAlert('alertRain')} />
           </Row>
           <Row label="Clear break coming" sub="Gaps in rain or clouds" dark={darkMode}>
-            <Toggle on={settings.alertClear} onToggle={() => toggle('alertClear')} />
+            <Toggle on={settings.alertClear} onToggle={() => toggleAlert('alertClear')} />
           </Row>
           <Row label="Conditions worsening" sub="Rapid weather changes" last dark={darkMode}>
-            <Toggle on={settings.alertWorsen} onToggle={() => toggle('alertWorsen')} />
+            <Toggle on={settings.alertWorsen} onToggle={() => toggleAlert('alertWorsen')} />
           </Row>
         </div>
+        {(settings.alertRain || settings.alertClear || settings.alertWorsen) && notifPerm !== 'granted' && (
+          <div style={{
+            marginTop: 8, padding: '10px 14px', borderRadius: 10,
+            background: darkMode ? 'rgba(212,160,23,0.16)' : 'rgba(212,160,23,0.14)',
+            border: `1.5px solid rgba(212,160,23,0.45)`,
+            fontSize: 13, fontWeight: 500, color: darkMode ? '#e8c050' : '#7a5d10',
+            lineHeight: 1.45,
+          }}>
+            {notifPerm === 'denied'
+              ? 'Notifications are blocked in your browser settings — alerts won\'t fire until you re-enable them.'
+              : notifPerm === 'unsupported'
+                ? 'This browser doesn\'t support notifications, so alerts won\'t fire.'
+                : 'Tap a toggle again to grant notification permission.'}
+          </div>
+        )}
 
         <SectionLabel dark={darkMode}>Color key</SectionLabel>
         <div style={{ background: card, borderRadius: 12, border: `1.5px solid ${border}`, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>

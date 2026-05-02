@@ -19,6 +19,14 @@ interface Props {
   fetchError: boolean;
   onRefresh: () => void;
   darkMode: boolean;
+  yesterdayTemp: number | null; // °F, internal unit
+  pressureTrend: { direction: 'rising' | 'falling' | 'steady'; rate: 'fast' | 'normal' } | null;
+}
+
+function buzz(ms = 10) {
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    try { navigator.vibrate(ms); } catch { /* unsupported */ }
+  }
 }
 
 function fToC(f: number) { return Math.round((f - 32) * 5 / 9); }
@@ -70,6 +78,7 @@ type HourlyItem =
 export function HomeScreen({
   onSettings, nowMin, setNowMin, forecast, hourlyForecast, sunriseTime, sunsetTime,
   location, currentConditions, settings, lastUpdated, refreshing, fetchError, onRefresh, darkMode,
+  yesterdayTemp, pressureTrend,
 }: Props) {
   const current = forecast[nowMin];
   const cs = getStyle(current.condition, current.precip);
@@ -77,6 +86,35 @@ export function HomeScreen({
   const [hoveredMin, setHoveredMin] = useState<number | null>(null);
   const [leaveMin, setLeaveMin] = useState<number | null>(null);
   const [planMode, setPlanMode] = useState(false);
+
+  // Pull-to-refresh state
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pullStartY = useRef<number | null>(null);
+  const [pullDist, setPullDist] = useState(0);
+  const PULL_THRESHOLD = 70;
+  const handlePullStart = (e: React.TouchEvent) => {
+    if (!scrollRef.current) return;
+    if (scrollRef.current.scrollTop > 0) { pullStartY.current = null; return; }
+    pullStartY.current = e.touches[0].clientY;
+  };
+  const handlePullMove = (e: React.TouchEvent) => {
+    if (pullStartY.current == null) return;
+    if (!scrollRef.current || scrollRef.current.scrollTop > 0) { pullStartY.current = null; setPullDist(0); return; }
+    const dy = e.touches[0].clientY - pullStartY.current;
+    if (dy <= 0) { setPullDist(0); return; }
+    // Rubber-band: dampen as user pulls further
+    const damped = Math.min(120, dy * 0.55);
+    setPullDist(damped);
+  };
+  const handlePullEnd = () => {
+    if (pullStartY.current == null) return;
+    if (pullDist >= PULL_THRESHOLD && !refreshing) {
+      buzz(15);
+      onRefresh();
+    }
+    pullStartY.current = null;
+    setPullDist(0);
+  };
 
   const useCelsius = settings.tempUnit === '°C';
   const useKph = settings.windUnit === 'km/h';
@@ -193,6 +231,7 @@ export function HomeScreen({
     return '';
   })();
 
+  const lastInteractMin = useRef<number | null>(null);
   const handleTimelineInteract = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     if (!timelineRef.current) return;
     const rect = timelineRef.current.getBoundingClientRect();
@@ -200,20 +239,33 @@ export function HomeScreen({
     const min = Math.round(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * 59);
     if (planMode) setLeaveMin(min);
     else setNowMin(min);
+    // Light haptic blip when crossing into a new minute during a touch drag
+    if ('touches' in e && lastInteractMin.current !== min) {
+      buzz(4);
+      lastInteractMin.current = min;
+    }
   }, [setNowMin, planMode]);
 
   const feelsLikeF  = currentConditions?.feelsLike   ?? Math.round(current.temp - current.precip * 5);
   const windMph     = currentConditions?.windSpeed    ?? (current.condition === 'rain' ? 14 : current.condition === 'drizzle' ? 8 : 4);
+  const windGustMph = currentConditions?.windGust;
   const windBearing = currentConditions?.windBearing;
   const humidity    = currentConditions?.humidity     ?? (current.condition === 'rain' ? 91 : current.condition === 'drizzle' ? 79 : 54);
   const uvIndex     = currentConditions?.uvIndex      ?? (current.condition === 'clear' ? 4 : 1);
   const visMi       = currentConditions?.visibility   ?? (current.condition === 'rain' ? 1 : 10);
+  const pressureMb  = currentConditions?.pressure;
+  const stormDist   = currentConditions?.nearestStormDistance;
+  const stormBear   = currentConditions?.nearestStormBearing;
 
   const displayTemp     = useCelsius ? fToC(current.temp) : Math.round(current.temp);
   const displayFeels    = useCelsius ? fToC(feelsLikeF) : feelsLikeF;
   const displayWind     = useKph ? mphToKph(windMph) : windMph;
+  const displayGust     = windGustMph != null ? (useKph ? mphToKph(windGustMph) : windGustMph) : null;
   const displayWindUnit = useKph ? 'km/h' : 'mph';
   const displayVis      = useKph ? `${miToKm(visMi)}km` : `${visMi}mi`;
+  const displayStormDist = stormDist != null
+    ? (useKph ? `${Math.round(stormDist * 1.60934)}km` : `${stormDist}mi`)
+    : null;
   const tempUnit        = settings.tempUnit;
 
   const apiHigh = currentConditions?.highTemp != null ? (useCelsius ? fToC(currentConditions.highTemp) : currentConditions.highTemp) : null;
@@ -264,6 +316,32 @@ export function HomeScreen({
   const uvLabel = uvIndex <= 2 ? 'Low' : uvIndex <= 5 ? 'Mod' : uvIndex <= 7 ? 'High' : 'V.High';
   const isStale = lastUpdated != null && (Date.now() - lastUpdated.getTime()) > 25 * 60 * 1000;
   const windLabel = windBearing != null ? `${bearingToDir(windBearing)} ${displayWind}` : `${displayWind}`;
+
+  // ── Yesterday comparison (uses internal °F values then converts for display)
+  const yesterdayDelta = (() => {
+    if (yesterdayTemp == null) return null;
+    const todayF = currentConditions?.feelsLike ?? current.temp;
+    const diffF = Math.round(todayF - yesterdayTemp);
+    if (Math.abs(diffF) < 2) return { text: 'About the same as yesterday', sign: 0 };
+    const diffDisplay = useCelsius ? Math.round(Math.abs(todayF - yesterdayTemp) * 5 / 9) : Math.abs(diffF);
+    if (diffDisplay < 1) return { text: 'About the same as yesterday', sign: 0 };
+    return diffF > 0
+      ? { text: `${diffDisplay}° warmer than yesterday`, sign: 1 }
+      : { text: `${diffDisplay}° cooler than yesterday`, sign: -1 };
+  })();
+
+  // ── Storm tracker — only show when reasonably close
+  const showStorm = stormDist != null && stormDist < 30 && stormBear != null;
+  const stormDir = stormBear != null ? bearingToDir(stormBear) : '';
+
+  // ── Pressure label
+  const pressureArrow = pressureTrend?.direction === 'rising' ? '↑'
+                       : pressureTrend?.direction === 'falling' ? '↓'
+                       : pressureTrend?.direction === 'steady' ? '→' : '';
+  const pressureValue = pressureMb != null ? `${pressureArrow}${pressureMb}` : '—';
+  const pressureSubLabel = pressureTrend
+    ? `${pressureTrend.direction === 'steady' ? 'Steady' : pressureTrend.direction}${pressureTrend.rate === 'fast' ? ' fast' : ''}`
+    : 'mb';
   const isRaining  = current.condition === 'rain' || current.condition === 'drizzle' || current.condition === 'sleet';
   const isSnowing  = current.condition === 'snow' || current.condition === 'flurries';
   const dropCount  = current.condition === 'rain' ? 22 : current.condition === 'sleet' ? 16 : 13;
@@ -315,11 +393,46 @@ export function HomeScreen({
         </div>
       )}
 
+      {/* PULL-TO-REFRESH INDICATOR */}
+      {pullDist > 4 && (
+        <div aria-hidden style={{
+          position: 'absolute', top: `calc(var(--top-safe) + 4px)`, left: '50%',
+          transform: `translateX(-50%) translateY(${Math.min(pullDist - 8, 60)}px)`,
+          zIndex: 5, pointerEvents: 'none',
+          background: t.cardStrong, borderRadius: '50%',
+          width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          border: `1.5px solid ${t.cardBorder}`,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
+          opacity: Math.min(1, pullDist / PULL_THRESHOLD),
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke={pullDist >= PULL_THRESHOLD ? cs.accent : t.text2}
+            strokeWidth="2.5" strokeLinecap="round"
+            style={{
+              transform: `rotate(${Math.min(pullDist * 3, 360)}deg)`,
+              transition: 'stroke 0.15s',
+              animation: refreshing ? 'spin 1s linear infinite' : 'none',
+            }}>
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+        </div>
+      )}
+
       {/* SCROLL CONTAINER — entire screen scrolls as one */}
-      <div style={{
-        position: 'relative', zIndex: 1, height: '100%',
-        overflowY: 'auto', overflowX: 'hidden',
-        WebkitOverflowScrolling: 'touch',
+      <div
+        ref={scrollRef}
+        onTouchStart={handlePullStart}
+        onTouchMove={handlePullMove}
+        onTouchEnd={handlePullEnd}
+        onTouchCancel={handlePullEnd}
+        style={{
+          position: 'relative', zIndex: 1, height: '100%',
+          overflowY: 'auto', overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehaviorY: 'contain',
+          transform: pullDist > 0 ? `translateY(${Math.min(pullDist * 0.5, 50)}px)` : undefined,
+          transition: pullStartY.current == null ? 'transform 0.25s ease' : 'none',
       }}>
 
       {/* HEADER */}
@@ -369,6 +482,14 @@ export function HomeScreen({
             {highTemp !== null && lowTemp !== null && (
               <div style={{ color: t.text3, fontSize: 13, fontWeight: 500 }}>H: {highTemp}° &nbsp; L: {lowTemp}°</div>
             )}
+            {yesterdayDelta && (
+              <div style={{
+                color: yesterdayDelta.sign > 0 ? '#c94f2a' : yesterdayDelta.sign < 0 ? '#4a6e94' : t.text3,
+                fontSize: 13, fontWeight: 600, marginTop: 1,
+              }}>
+                {yesterdayDelta.sign > 0 ? '↑ ' : yesterdayDelta.sign < 0 ? '↓ ' : ''}{yesterdayDelta.text}
+              </div>
+            )}
           </div>
         </div>
         <div style={{ paddingBottom: 28, opacity: 0.75, flexShrink: 0 }}>
@@ -410,12 +531,43 @@ export function HomeScreen({
         )}
       </div>
 
+      {/* STORM TRACKER */}
+      {showStorm && (
+        <div style={{ margin: '10px 22px 0' }}>
+          <div style={{
+            background: t.cardStrong, borderRadius: 12, padding: '11px 14px',
+            border: '1.5px solid rgba(176,48,32,0.55)',
+            display: 'flex', alignItems: 'center', gap: 11,
+          }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+              background: 'rgba(176,48,32,0.18)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#b03020" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9"/>
+                <polyline points="13 11 9 17 15 17 11 23"/>
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: t.text1 }}>
+                Storm {displayStormDist} {stormDir}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 500, color: t.text3, marginTop: 1 }}>
+                Nearest active storm cell
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 60-MIN TIMELINE */}
       <div style={{ margin: '18px 0 0', padding: '0 22px', position: 'relative', zIndex: 1 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 12, color: t.text3, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600 }}>Next hour</span>
             <button onClick={() => {
+              buzz(8);
               if (planMode) { setPlanMode(false); }
               else { setPlanMode(true); setLeaveMin(leaveMin ?? Math.min(nowMin + 15, 59)); }
             }} style={{
@@ -716,22 +868,36 @@ export function HomeScreen({
               })}
             </div>
             <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
-            <div style={{ display: 'flex', padding: '16px 0 18px' }}>
-              {[
-                { label: 'Wind',  value: `${windLabel} ${displayWindUnit}` },
-                { label: 'Humid', value: `${humidity}%` },
-                { label: 'UV',    value: `${uvIndex} · ${uvLabel}` },
-                { label: 'Vis',   value: displayVis },
-              ].map((s, i, arr) => (
-                <div key={s.label} style={{
-                  flex: 1, textAlign: 'center',
-                  borderRight: i < arr.length - 1 ? `1px solid ${t.dividerStat}` : 'none',
-                }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: t.text1, whiteSpace: 'nowrap' }}>{s.value}</div>
-                  <div style={{ fontSize: 11, fontWeight: 600, color: t.text3, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
+            {(() => {
+              const stats = [
+                { label: 'Wind',  value: `${windLabel}`,        sub: displayWindUnit },
+                { label: 'Humid', value: `${humidity}%`,        sub: '' },
+                { label: 'UV',    value: `${uvIndex}`,          sub: uvLabel },
+                { label: 'Gusts', value: displayGust != null ? `${displayGust}` : '—', sub: displayGust != null ? displayWindUnit : '' },
+                { label: 'Press', value: pressureValue,         sub: pressureSubLabel },
+                { label: 'Vis',   value: displayVis,            sub: '' },
+              ];
+              return (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', padding: '14px 0 16px' }}>
+                  {stats.map((s, i) => {
+                    const col = i % 3;
+                    const row = Math.floor(i / 3);
+                    return (
+                      <div key={s.label} style={{
+                        textAlign: 'center', padding: '8px 4px',
+                        borderRight: col < 2 ? `1px solid ${t.dividerStat}` : 'none',
+                        borderBottom: row < 1 ? `1px solid ${t.dividerStat}` : 'none',
+                      }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: t.text1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.value}</div>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: t.text3, marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>
+                          {s.label}{s.sub ? ` · ${s.sub}` : ''}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
         </div>
 

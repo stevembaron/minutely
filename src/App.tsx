@@ -4,7 +4,8 @@ import { HomeScreen } from './screens/HomeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { LocationScreen } from './screens/LocationScreen';
 import { AdminScreen } from './screens/AdminScreen';
-import { buildForecast, fetchLiveData } from './weather';
+import { buildForecast, fetchLiveData, fetchYesterdayTemp } from './weather';
+import { evaluateAlerts } from './notifications';
 import type { Screen, ScenarioKey, Settings, MinuteForecast, CurrentConditions, HourlyForecast } from './types';
 
 function load<T>(key: string, fallback: T): T {
@@ -39,6 +40,8 @@ export default function App() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+  const [yesterdayTemp, setYesterdayTemp] = useState<number | null>(null);
+  const [pressureTrend, setPressureTrend] = useState<{ direction: 'rising' | 'falling' | 'steady'; rate: 'fast' | 'normal' } | null>(null);
 
   // Dark mode listener
   useEffect(() => {
@@ -58,46 +61,82 @@ export default function App() {
     setLocationCoords({ lat, lng });
   };
 
+  // Compute pressure trend by comparing the new reading against samples
+  // we've collected over the last few hours in localStorage.
+  const updatePressureTrend = (lat: number, lng: number, pressure: number | undefined) => {
+    if (pressure == null) { setPressureTrend(null); return; }
+    const key = `soon-pressure-${lat.toFixed(2)},${lng.toFixed(2)}`;
+    type Sample = { t: number; p: number };
+    const now = Date.now();
+    let history: Sample[] = [];
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) history = JSON.parse(raw);
+    } catch { /* corrupt */ }
+    history.push({ t: now, p: pressure });
+    history = history.filter(s => now - s.t < 6 * 60 * 60 * 1000); // last 6h
+    try { localStorage.setItem(key, JSON.stringify(history)); } catch { /* quota */ }
+
+    // Need at least one reading from 1.5+ hours ago to call a trend
+    const ref = history.find(s => now - s.t >= 90 * 60 * 1000);
+    if (!ref) { setPressureTrend(null); return; }
+    const diff = pressure - ref.p;
+    const absMag = Math.abs(diff);
+    if (absMag < 0.5) setPressureTrend({ direction: 'steady', rate: 'normal' });
+    else if (diff > 0) setPressureTrend({ direction: 'rising', rate: absMag > 2 ? 'fast' : 'normal' });
+    else               setPressureTrend({ direction: 'falling', rate: absMag > 2 ? 'fast' : 'normal' });
+  };
+
+  const applyResult = (coords: { lat: number; lng: number }, result: NonNullable<Awaited<ReturnType<typeof fetchLiveData>>>) => {
+    const prevCurrent = currentConditions;
+    const prevForecast = forecast;
+    setForecast(result.forecast);
+    setCurrentConditions(result.current);
+    setHourlyForecast(result.hourly);
+    setSunriseTime(result.sunriseTime);
+    setSunsetTime(result.sunsetTime);
+    setNowMin(0);
+    setUsingLive(true);
+    setLastUpdated(new Date());
+    setFetchError(false);
+    updatePressureTrend(coords.lat, coords.lng, result.current.pressure);
+    evaluateAlerts({
+      settings,
+      prevCurrent,
+      prevForecast,
+      newCurrent: result.current,
+      newForecast: result.forecast,
+    });
+  };
+
   const doFetch = (coords: { lat: number; lng: number }) => {
     setRefreshing(true);
     setFetchError(false);
     return fetchLiveData(coords.lat, coords.lng).then(result => {
       if (!result) { setFetchError(true); return; }
-      setForecast(result.forecast);
-      setCurrentConditions(result.current);
-      setHourlyForecast(result.hourly);
-      setSunriseTime(result.sunriseTime);
-      setSunsetTime(result.sunsetTime);
-      setNowMin(0);
-      setUsingLive(true);
-      setLastUpdated(new Date());
-      setFetchError(false);
+      applyResult(coords, result);
     }).catch(() => setFetchError(true))
       .finally(() => setRefreshing(false));
   };
 
   // Fetch live data whenever coords change
   useEffect(() => {
-    if (!locationCoords) { setUsingLive(false); return; }
+    if (!locationCoords) { setUsingLive(false); setYesterdayTemp(null); return; }
     let cancelled = false;
     setRefreshing(true);
     setFetchError(false);
-    fetchLiveData(locationCoords.lat, locationCoords.lng).then(result => {
+    const coords = locationCoords;
+    fetchLiveData(coords.lat, coords.lng).then(result => {
       if (cancelled) return;
       if (!result) { setFetchError(true); return; }
-      setForecast(result.forecast);
-      setCurrentConditions(result.current);
-      setHourlyForecast(result.hourly);
-      setSunriseTime(result.sunriseTime);
-      setSunsetTime(result.sunsetTime);
-      setNowMin(0);
-      setUsingLive(true);
-      setLastUpdated(new Date());
-      setFetchError(false);
+      applyResult(coords, result);
     }).catch(() => { if (!cancelled) setFetchError(true); })
       .finally(() => { if (!cancelled) setRefreshing(false); });
+    // Yesterday-temp is fetched separately and refreshed at most once per location change
+    setYesterdayTemp(null);
+    fetchYesterdayTemp(coords.lat, coords.lng).then(t => { if (!cancelled) setYesterdayTemp(t); });
     return () => { cancelled = true; };
-  }, [locationCoords]);
+  }, [locationCoords]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-refresh every 10 minutes
   useEffect(() => {
@@ -149,6 +188,8 @@ export default function App() {
           fetchError={fetchError}
           onRefresh={() => locationCoords && doFetch(locationCoords)}
           darkMode={darkMode}
+          yesterdayTemp={yesterdayTemp}
+          pressureTrend={pressureTrend}
         />
       )}
       {screen === 'settings' && (
