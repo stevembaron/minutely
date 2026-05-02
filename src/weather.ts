@@ -1,4 +1,4 @@
-import type { Condition, MinuteForecast, LocationInfo, ScenarioKey, CurrentConditions, HourlyForecast } from './types';
+import type { Condition, MinuteForecast, LocationInfo, ScenarioKey, CurrentConditions, HourlyForecast, WeatherAlert } from './types';
 
 // ── COLOR / STYLE SYSTEM ───────────────────────────────────────────────────
 export const CONDITION_STYLE: Record<Condition, { barColor: string; accent: string; bg: string; bgDark: string; textAccent: string; label: string }> = {
@@ -161,6 +161,7 @@ export interface LiveData {
   hourly: HourlyForecast[];
   sunriseTime?: Date;
   sunsetTime?: Date;
+  alerts: WeatherAlert[];
 }
 
 function kphToMph(kph: number): number { return kph * 0.621371; }
@@ -168,7 +169,7 @@ function kmToMiles(km: number): number { return km * 0.621371; }
 
 export async function fetchLiveData(lat: number, lng: number): Promise<LiveData | null> {
   try {
-    const url = `https://api.pirateweather.net/forecast/${API_KEY}/${lat},${lng}?exclude=alerts&units=ca`;
+    const url = `https://api.pirateweather.net/forecast/${API_KEY}/${lat},${lng}?units=ca`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
@@ -240,7 +241,25 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
       };
     });
 
-    return { forecast, current, hourly, sunriseTime, sunsetTime };
+    const alerts: WeatherAlert[] = (data.alerts ?? []).map((a: {
+      title?: string; description?: string; severity?: string;
+      uri?: string; expires?: number; regions?: string[];
+    }) => {
+      const sevRaw = (a.severity ?? '').toLowerCase();
+      const severity: WeatherAlert['severity'] =
+        sevRaw === 'warning' ? 'warning' :
+        sevRaw === 'watch'   ? 'watch'   : 'advisory';
+      return {
+        title:       a.title ?? 'Weather alert',
+        description: a.description ?? '',
+        severity,
+        uri:         a.uri,
+        expires:     a.expires ? new Date(a.expires * 1000) : undefined,
+        regions:     a.regions,
+      };
+    });
+
+    return { forecast, current, hourly, sunriseTime, sunsetTime, alerts };
   } catch (err) {
     console.error('Pirate Weather error:', err);
     return null;

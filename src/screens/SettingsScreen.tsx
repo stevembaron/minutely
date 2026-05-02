@@ -90,6 +90,9 @@ export function SettingsScreen({ onBack, settings, setSettings, onAdmin, onLocat
     }
   };
 
+  const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const anyAlertOn = settings.alertRain || settings.alertClear || settings.alertWorsen;
+
   const bg = darkMode ? '#111318' : '#f7f5f2';
   const card = darkMode ? '#1c1c28' : '#fff';
   const border = darkMode ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.13)';
@@ -144,19 +147,32 @@ export function SettingsScreen({ onBack, settings, setSettings, onAdmin, onLocat
             <Toggle on={settings.alertWorsen} onToggle={() => toggleAlert('alertWorsen')} />
           </Row>
         </div>
-        {(settings.alertRain || settings.alertClear || settings.alertWorsen) && notifPerm !== 'granted' && (
+        {anyAlertOn && notifPerm !== 'granted' && (
           <div style={{
-            marginTop: 8, padding: '10px 14px', borderRadius: 10,
+            marginTop: 10, padding: '11px 14px', borderRadius: 11,
             background: darkMode ? 'rgba(212,160,23,0.16)' : 'rgba(212,160,23,0.14)',
-            border: `1.5px solid rgba(212,160,23,0.45)`,
+            border: `1.5px solid rgba(212,160,23,0.5)`,
             fontSize: 13, fontWeight: 500, color: darkMode ? '#e8c050' : '#7a5d10',
-            lineHeight: 1.45,
+            lineHeight: 1.5,
           }}>
             {notifPerm === 'denied'
               ? 'Notifications are blocked in your browser settings — alerts won\'t fire until you re-enable them.'
               : notifPerm === 'unsupported'
                 ? 'This browser doesn\'t support notifications, so alerts won\'t fire.'
                 : 'Tap a toggle again to grant notification permission.'}
+          </div>
+        )}
+        {anyAlertOn && notifPerm === 'granted' && (
+          <div style={{
+            marginTop: 10, padding: '11px 14px', borderRadius: 11,
+            background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+            border: `1.5px solid ${border}`,
+            fontSize: 12, fontWeight: 500, color: text3, lineHeight: 1.55,
+          }}>
+            <strong style={{ color: text1, fontWeight: 700 }}>Heads up:</strong>{' '}
+            {isIOS
+              ? 'On iOS, alerts only fire while the app is open — Apple doesn\'t allow background notifications for installed PWAs. Severe weather alerts (tornado, flood) always show in the app whether it\'s open or not.'
+              : 'Alerts fire when the app is open or recently in use. For lock-screen delivery, install the app to your home screen and keep it open in the background.'}
           </div>
         )}
 

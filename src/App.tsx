@@ -6,7 +6,8 @@ import { LocationScreen } from './screens/LocationScreen';
 import { AdminScreen } from './screens/AdminScreen';
 import { buildForecast, fetchLiveData, fetchYesterdayTemp } from './weather';
 import { evaluateAlerts } from './notifications';
-import type { Screen, ScenarioKey, Settings, MinuteForecast, CurrentConditions, HourlyForecast } from './types';
+import { WelcomeScreen } from './screens/WelcomeScreen';
+import type { Screen, ScenarioKey, Settings, MinuteForecast, CurrentConditions, HourlyForecast, WeatherAlert } from './types';
 
 function load<T>(key: string, fallback: T): T {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch { return fallback; }
@@ -42,6 +43,10 @@ export default function App() {
   const [fetchError, setFetchError] = useState(false);
   const [yesterdayTemp, setYesterdayTemp] = useState<number | null>(null);
   const [pressureTrend, setPressureTrend] = useState<{ direction: 'rising' | 'falling' | 'steady'; rate: 'fast' | 'normal' } | null>(null);
+  const [alerts, setAlerts] = useState<WeatherAlert[]>([]);
+  const [fetchedAt, setFetchedAt] = useState<Date | null>(null);
+  const [onboarded, setOnboarded] = useState<boolean>(() => load('soon-onboarded', false));
+  const [locationsBackTarget, setLocationsBackTarget] = useState<Screen>('settings');
 
   // Dark mode listener
   useEffect(() => {
@@ -55,6 +60,24 @@ export default function App() {
   useEffect(() => { save('soon-settings', settings); }, [settings]);
   useEffect(() => { save('soon-location', location); }, [location]);
   useEffect(() => { save('soon-coords', locationCoords); }, [locationCoords]);
+  useEffect(() => { save('soon-onboarded', onboarded); }, [onboarded]);
+
+  // Advance the "now" indicator every 30s based on real elapsed time
+  // since the last fetch. Without this, the timeline visibly stales out
+  // — the indicator stays at minute 0 even though real time keeps moving.
+  useEffect(() => {
+    if (!fetchedAt) return;
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - fetchedAt.getTime()) / 60000);
+      setNowMin(prev => {
+        const target = Math.min(59, Math.max(0, elapsed));
+        return target > prev ? target : prev;
+      });
+    };
+    tick();
+    const id = setInterval(tick, 30 * 1000);
+    return () => clearInterval(id);
+  }, [fetchedAt]);
 
   const selectLocation = (name: string, lat: number, lng: number) => {
     setLocation(name);
@@ -90,14 +113,17 @@ export default function App() {
   const applyResult = (coords: { lat: number; lng: number }, result: NonNullable<Awaited<ReturnType<typeof fetchLiveData>>>) => {
     const prevCurrent = currentConditions;
     const prevForecast = forecast;
+    const now = new Date();
     setForecast(result.forecast);
     setCurrentConditions(result.current);
     setHourlyForecast(result.hourly);
     setSunriseTime(result.sunriseTime);
     setSunsetTime(result.sunsetTime);
+    setAlerts(result.alerts);
     setNowMin(0);
+    setFetchedAt(now);
     setUsingLive(true);
-    setLastUpdated(new Date());
+    setLastUpdated(now);
     setFetchError(false);
     updatePressureTrend(coords.lat, coords.lng, result.current.pressure);
     evaluateAlerts({
@@ -164,6 +190,12 @@ export default function App() {
   );
   const frameRef = useRef<HTMLDivElement>(null);
 
+  const showWelcome = !onboarded;
+
+  const completeOnboarding = () => {
+    setOnboarded(true);
+  };
+
   const content = (
     <div style={{
       width: '100%', height: '100%', overflow: 'hidden',
@@ -171,7 +203,21 @@ export default function App() {
       transform: exiting ? 'translateY(6px)' : 'translateY(0)',
       transition: 'opacity 0.18s ease, transform 0.18s ease',
     }}>
-      {screen === 'home' && (
+      {showWelcome && (
+        <WelcomeScreen
+          darkMode={darkMode}
+          onGeolocate={(lat, lng) => {
+            selectLocation('My Location', lat, lng);
+            completeOnboarding();
+          }}
+          onPickCity={() => {
+            completeOnboarding();
+            setLocationsBackTarget('home');
+            setScreen('locations');
+          }}
+        />
+      )}
+      {!showWelcome && screen === 'home' && (
         <HomeScreen
           onSettings={() => navigate('settings')}
           nowMin={nowMin}
@@ -190,9 +236,10 @@ export default function App() {
           darkMode={darkMode}
           yesterdayTemp={yesterdayTemp}
           pressureTrend={pressureTrend}
+          alerts={alerts}
         />
       )}
-      {screen === 'settings' && (
+      {!showWelcome && screen === 'settings' && (
         <SettingsScreen
           onBack={() => navigate('home')}
           settings={settings}
@@ -203,15 +250,15 @@ export default function App() {
           darkMode={darkMode}
         />
       )}
-      {screen === 'locations' && (
+      {!showWelcome && screen === 'locations' && (
         <LocationScreen
-          onBack={() => navigate('settings')}
+          onBack={() => { const t = locationsBackTarget; setLocationsBackTarget('settings'); navigate(t); }}
           location={location}
           selectLocation={selectLocation}
           darkMode={darkMode}
         />
       )}
-      {screen === 'admin' && (
+      {!showWelcome && screen === 'admin' && (
         <AdminScreen
           onBack={() => navigate('settings')}
           scenario={scenario}

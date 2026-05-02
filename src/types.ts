@@ -50,3 +50,12 @@ export interface HourlyForecast {
   temp: number;       // °F
   precipProb: number; // 0–100
 }
+
+export interface WeatherAlert {
+  title: string;
+  description: string;
+  severity: 'advisory' | 'watch' | 'warning';
+  uri?: string;
+  expires?: Date;
+  regions?: string[];
+}

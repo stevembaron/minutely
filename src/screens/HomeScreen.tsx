@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { CondIcon } from '../components/Icons';
 import { getStyle, timeLabel } from '../weather';
-import type { MinuteForecast, HourlyForecast, CurrentConditions, Settings } from '../types';
+import type { MinuteForecast, HourlyForecast, CurrentConditions, Settings, WeatherAlert } from '../types';
 
 interface Props {
   onSettings: () => void;
@@ -21,6 +21,7 @@ interface Props {
   darkMode: boolean;
   yesterdayTemp: number | null; // °F, internal unit
   pressureTrend: { direction: 'rising' | 'falling' | 'steady'; rate: 'fast' | 'normal' } | null;
+  alerts: WeatherAlert[];
 }
 
 function buzz(ms = 10) {
@@ -78,8 +79,9 @@ type HourlyItem =
 export function HomeScreen({
   onSettings, nowMin, setNowMin, forecast, hourlyForecast, sunriseTime, sunsetTime,
   location, currentConditions, settings, lastUpdated, refreshing, fetchError, onRefresh, darkMode,
-  yesterdayTemp, pressureTrend,
+  yesterdayTemp, pressureTrend, alerts,
 }: Props) {
+  const [expandedAlertIdx, setExpandedAlertIdx] = useState<number | null>(null);
   const current = forecast[nowMin];
   const cs = getStyle(current.condition, current.precip);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -461,6 +463,67 @@ export function HomeScreen({
           </svg>
         </button>
       </div>
+
+      {/* SEVERE WEATHER ALERTS */}
+      {alerts.length > 0 && (
+        <div style={{ margin: '14px 22px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {alerts.map((alert, idx) => {
+            const isExpanded = expandedAlertIdx === idx;
+            const palette = alert.severity === 'warning'
+              ? { bg: darkMode ? 'rgba(176,48,32,0.20)' : 'rgba(176,48,32,0.10)',
+                  border: '#b03020', accent: '#b03020', label: 'WARNING' }
+              : alert.severity === 'watch'
+              ? { bg: darkMode ? 'rgba(212,160,23,0.18)' : 'rgba(212,160,23,0.12)',
+                  border: '#b88512', accent: '#b88512', label: 'WATCH' }
+              : { bg: darkMode ? 'rgba(212,160,23,0.10)' : 'rgba(212,160,23,0.08)',
+                  border: '#d4a017', accent: darkMode ? '#d4a017' : '#8a620d', label: 'ADVISORY' };
+            return (
+              <div key={idx} onClick={() => setExpandedAlertIdx(isExpanded ? null : idx)} style={{
+                background: palette.bg, borderRadius: 12,
+                border: `2px solid ${palette.border}`, padding: '12px 14px', cursor: 'pointer',
+                transition: 'background 0.15s',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={palette.accent} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9"  x2="12" y2="13"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: palette.accent, letterSpacing: '0.08em', marginBottom: 2 }}>
+                      {palette.label}{alert.expires ? ` · until ${alert.expires.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
+                    </div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: t.text1, lineHeight: 1.3, whiteSpace: isExpanded ? 'normal' : 'nowrap', overflow: isExpanded ? 'visible' : 'hidden', textOverflow: 'ellipsis' }}>
+                      {alert.title}
+                    </div>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={t.text3} strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }}>
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </div>
+                {isExpanded && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${palette.border}55` }}>
+                    {alert.regions && alert.regions.length > 0 && (
+                      <div style={{ fontSize: 12, fontWeight: 600, color: t.text2, marginBottom: 6 }}>
+                        Affects: {alert.regions.slice(0, 4).join(', ')}{alert.regions.length > 4 ? '…' : ''}
+                      </div>
+                    )}
+                    <div style={{ fontSize: 13, fontWeight: 500, color: t.text2, lineHeight: 1.55, whiteSpace: 'pre-wrap', maxHeight: 280, overflowY: 'auto' }}>
+                      {alert.description}
+                    </div>
+                    {alert.uri && (
+                      <a href={alert.uri} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}
+                         style={{ display: 'inline-block', marginTop: 10, fontSize: 12, fontWeight: 700, color: palette.accent, textDecoration: 'none', borderBottom: `1.5px solid ${palette.accent}` }}>
+                        Full text on official source ↗
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* HERO */}
       <div style={{ padding: '20px 22px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
