@@ -5,8 +5,11 @@ html, body {
   display: flex; align-items: center; justify-content: center;
   font-family: 'DM Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
 }
 #root { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+button, input { -webkit-tap-highlight-color: transparent; }
 
 /*
   Safe-area CSS variables.

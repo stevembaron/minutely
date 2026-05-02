@@ -182,6 +182,7 @@ export default function App() {
           setLocation={(loc) => { setLocation(loc); setLocationCoords(null); }}
           tempOffset={tempOffset}
           setTempOffset={setTempOffset}
+          darkMode={darkMode}
         />
       )}
     </div>

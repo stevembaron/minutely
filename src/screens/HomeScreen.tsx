@@ -82,26 +82,26 @@ export function HomeScreen({
   const useKph = settings.windUnit === 'km/h';
 
   const t = {
-    text1: darkMode ? '#f0f0f0' : '#1a1a1a',
-    text2: darkMode ? '#c0c0c0' : '#666',
-    text3: darkMode ? '#888' : '#aaa',
-    text4: darkMode ? '#666' : '#bbb',
-    text5: darkMode ? '#555' : '#ccc',
-    nowLine: darkMode ? 'rgba(255,255,255,0.85)' : '#1a1a1a',
-    card: darkMode ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.7)',
-    cardStrong: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.85)',
-    cardNow: darkMode ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.95)',
-    cardHour: darkMode ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.5)',
-    cardBorder: darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)',
-    subtleBg: darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.04)',
-    precipTrack: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
-    divider: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
-    dividerSoft: darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
-    dividerStat: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
-    btnBg: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.75)',
-    btnBorder: darkMode ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.09)',
-    sunLine: darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
-    transLabelBg: darkMode ? 'rgba(25,25,32,0.9)' : 'rgba(255,255,255,0.82)',
+    text1: darkMode ? '#f5f5f5' : '#0a0a0a',
+    text2: darkMode ? '#d0d0d0' : '#3a3a3a',
+    text3: darkMode ? '#a0a0a0' : '#5a5a5a',
+    text4: darkMode ? '#888' : '#777',
+    text5: darkMode ? '#666' : '#999',
+    nowLine: darkMode ? 'rgba(255,255,255,0.95)' : '#0a0a0a',
+    card: darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.88)',
+    cardStrong: darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.95)',
+    cardNow: darkMode ? 'rgba(255,255,255,0.16)' : '#fff',
+    cardHour: darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)',
+    cardBorder: darkMode ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.14)',
+    subtleBg: darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+    precipTrack: darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+    divider: darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+    dividerSoft: darkMode ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.09)',
+    dividerStat: darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)',
+    btnBg: darkMode ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.9)',
+    btnBorder: darkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.14)',
+    sunLine: darkMode ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.16)',
+    transLabelBg: darkMode ? 'rgba(20,20,28,0.95)' : 'rgba(255,255,255,0.92)',
     condText: darkMode ? cs.barColor : cs.textAccent,
   };
 
@@ -275,18 +275,18 @@ export function HomeScreen({
               <div style={{ width: 6, height: 6, borderRadius: '50%', background: cs.accent, opacity: 0.65 }} />
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: cs.accent }} />
             </div>
-            <span style={{ fontSize: 15, fontWeight: 700, color: cs.accent, letterSpacing: '-0.02em', lineHeight: 1 }}>soon</span>
+            <span style={{ fontSize: 17, fontWeight: 700, color: cs.accent, letterSpacing: '-0.02em', lineHeight: 1 }}>soon</span>
           </div>
-          <div style={{ fontSize: 15, fontWeight: 500, color: t.text2, letterSpacing: '-0.01em' }}>
+          <div style={{ fontSize: 17, fontWeight: 600, color: t.text2, letterSpacing: '-0.01em' }}>
             {location ? location.split(',')[0] : 'My Location'}
           </div>
         </div>
         <button onClick={onSettings} style={{
-          background: t.btnBg, border: `1px solid ${t.btnBorder}`,
-          borderRadius: 20, padding: '7px 10px', cursor: 'pointer', fontFamily: 'inherit',
-          display: 'flex', alignItems: 'center',
+          background: t.btnBg, border: `1.5px solid ${t.btnBorder}`,
+          borderRadius: 22, padding: '10px 12px', cursor: 'pointer', fontFamily: 'inherit',
+          display: 'flex', alignItems: 'center', minWidth: 44, minHeight: 44, justifyContent: 'center',
         }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={t.text3} strokeWidth="2" strokeLinecap="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={t.text2} strokeWidth="2" strokeLinecap="round">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
           </svg>
@@ -297,21 +297,21 @@ export function HomeScreen({
       <div style={{ padding: '20px 22px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
         <div>
           <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: cs.accent + '18', borderRadius: 6,
-            padding: '4px 10px 4px 7px', marginBottom: 14, transition: 'background 0.8s',
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            background: darkMode ? cs.accent + '28' : cs.accent + '22', borderRadius: 7,
+            padding: '5px 11px 5px 9px', marginBottom: 14, transition: 'background 0.8s',
           }}>
-            <CondIcon condition={current.condition} size={13} color={cs.accent} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: t.condText, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{cs.label}</span>
+            <CondIcon condition={current.condition} size={14} color={cs.accent} />
+            <span style={{ fontSize: 12, fontWeight: 700, color: t.condText, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{cs.label}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'flex-start', lineHeight: 1 }}>
-            <div style={{ fontSize: 88, fontWeight: 300, color: t.text1, letterSpacing: '-0.04em' }}>{displayTemp}</div>
-            <div style={{ fontSize: 38, fontWeight: 300, color: t.text1, marginTop: 12, marginLeft: 2 }}>{tempUnit}</div>
+            <div style={{ fontSize: 92, fontWeight: 300, color: t.text1, letterSpacing: '-0.04em' }}>{displayTemp}</div>
+            <div style={{ fontSize: 40, fontWeight: 300, color: t.text1, marginTop: 12, marginLeft: 2 }}>{tempUnit}</div>
           </div>
-          <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <div style={{ color: t.text3, fontSize: 13 }}>Feels like {displayFeels}° · {humidity}% humidity</div>
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div style={{ color: t.text2, fontSize: 14, fontWeight: 500 }}>Feels like {displayFeels}° · {humidity}% humidity</div>
             {highTemp !== null && lowTemp !== null && (
-              <div style={{ color: t.text3, fontSize: 12 }}>H: {highTemp}° &nbsp; L: {lowTemp}°</div>
+              <div style={{ color: t.text3, fontSize: 13, fontWeight: 500 }}>H: {highTemp}° &nbsp; L: {lowTemp}°</div>
             )}
           </div>
         </div>
@@ -323,19 +323,20 @@ export function HomeScreen({
       {/* NEXT EVENT CALLOUT */}
       <div style={{ margin: '20px 22px 0', position: 'relative', zIndex: 1 }}>
         <div style={{
-          background: t.cardStrong, borderRadius: 14, padding: '12px 16px',
-          border: `1.5px solid ${cs.accent}28`,
+          background: t.cardStrong, borderRadius: 14, padding: '14px 16px',
+          border: `1.5px solid ${cs.accent}45`,
           display: 'flex', alignItems: 'center', gap: 10,
           transition: 'border-color 0.8s',
         }}>
-          <div style={{ width: 7, height: 7, borderRadius: '50%', background: cs.barColor, flexShrink: 0 }} />
-          <span style={{ fontSize: 14, fontWeight: 500, color: t.text1, flex: 1 }}>{nextEvent}</span>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: cs.barColor, flexShrink: 0 }} />
+          <span style={{ fontSize: 15, fontWeight: 600, color: t.text1, flex: 1 }}>{nextEvent}</span>
           <button onClick={onRefresh} disabled={refreshing} style={{
             background: 'none', border: 'none', cursor: refreshing ? 'default' : 'pointer',
-            padding: 4, color: t.text5, display: 'flex', alignItems: 'center',
+            padding: 8, color: t.text3, display: 'flex', alignItems: 'center',
             opacity: refreshing ? 0.4 : 1, transition: 'opacity 0.2s', flexShrink: 0,
+            minWidth: 32, minHeight: 32, justifyContent: 'center',
           }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
               style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>
               <polyline points="23 4 23 10 17 10"/>
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -343,11 +344,11 @@ export function HomeScreen({
           </button>
         </div>
         {fetchError ? (
-          <div style={{ fontSize: 11, color: '#c0392b', marginTop: 5, textAlign: 'right', paddingRight: 2 }}>
+          <div style={{ fontSize: 12, color: '#c0392b', fontWeight: 500, marginTop: 6, textAlign: 'right', paddingRight: 2 }}>
             Couldn't update · tap to retry
           </div>
         ) : lastUpdated && (
-          <div style={{ fontSize: 10, color: isStale ? '#d4a017' : t.text5, marginTop: 5, textAlign: 'right', paddingRight: 2, transition: 'color 0.3s' }}>
+          <div style={{ fontSize: 11, color: isStale ? '#d4a017' : t.text4, fontWeight: 500, marginTop: 6, textAlign: 'right', paddingRight: 2, transition: 'color 0.3s' }}>
             {isStale ? '⚠ ' : ''}Updated {formatAge(lastUpdated)}
           </div>
         )}
@@ -355,23 +356,23 @@ export function HomeScreen({
 
       {/* 60-MIN TIMELINE */}
       <div style={{ margin: '18px 0 0', padding: '0 22px', position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 11, color: t.text3, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500 }}>Next hour</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 12, color: t.text3, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600 }}>Next hour</span>
             <button onClick={() => {
               if (planMode) { setPlanMode(false); }
               else { setPlanMode(true); setLeaveMin(leaveMin ?? Math.min(nowMin + 15, 59)); }
             }} style={{
-              background: planMode ? cs.accent + '22' : t.subtleBg,
-              border: `1px solid ${planMode ? cs.accent + '55' : t.cardBorder}`,
-              borderRadius: 10, padding: '2px 8px', cursor: 'pointer', fontFamily: 'inherit',
-              fontSize: 10, fontWeight: 600, color: planMode ? cs.accent : t.text3,
-              letterSpacing: '0.05em', textTransform: 'uppercase', transition: 'all 0.18s',
+              background: planMode ? cs.accent + '28' : t.subtleBg,
+              border: `1.5px solid ${planMode ? cs.accent + '70' : t.cardBorder}`,
+              borderRadius: 12, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit',
+              fontSize: 12, fontWeight: 700, color: planMode ? cs.accent : t.text2,
+              letterSpacing: '0.06em', textTransform: 'uppercase', transition: 'all 0.18s',
             }}>
               {planMode ? 'Done' : 'Plan'}
             </button>
           </div>
-          <span style={{ fontSize: 11, color: hoveredMin !== null ? t.condText : t.text4, fontFamily: 'monospace', transition: 'color 0.2s' }}>
+          <span style={{ fontSize: 12, fontWeight: 500, color: hoveredMin !== null ? t.condText : t.text3, fontFamily: 'monospace', transition: 'color 0.2s' }}>
             {hoveredMin !== null
               ? `${timeLabel(hoveredMin - nowMin)} · +${hoveredMin - nowMin}min`
               : `${timeLabel(0)} → ${timeLabel(60 - nowMin, true)}`}
@@ -393,16 +394,16 @@ export function HomeScreen({
                 transform: 'translateX(-50%)', pointerEvents: 'none', zIndex: 20,
               }}>
                 <div style={{
-                  background: 'rgba(22,22,28,0.94)', borderRadius: 10,
-                  padding: '8px 12px', border: `1px solid ${hs.barColor}50`,
-                  minWidth: 84, textAlign: 'center', boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+                  background: 'rgba(18,18,24,0.96)', borderRadius: 10,
+                  padding: '10px 14px', border: `1.5px solid ${hs.barColor}70`,
+                  minWidth: 92, textAlign: 'center', boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, marginBottom: 2 }}>
-                    <CondIcon condition={hm.condition} size={11} color={hs.barColor} />
-                    <span style={{ fontSize: 10, fontWeight: 700, color: hs.barColor, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{hs.label}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 3 }}>
+                    <CondIcon condition={hm.condition} size={12} color={hs.barColor} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: hs.barColor, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{hs.label}</span>
                   </div>
-                  <div style={{ fontSize: 16, fontWeight: 500, color: '#fff', lineHeight: 1.1 }}>{hTemp}{tempUnit}</div>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 3 }}>
+                  <div style={{ fontSize: 18, fontWeight: 600, color: '#fff', lineHeight: 1.1 }}>{hTemp}{tempUnit}</div>
+                  <div style={{ fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.55)', marginTop: 4 }}>
                     {hoveredMin === nowMin ? 'now' : `+${hoveredMin - nowMin} min`}
                   </div>
                 </div>
@@ -424,17 +425,17 @@ export function HomeScreen({
               setHoveredMin(Math.round(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * 59));
             }}
             onMouseLeave={() => setHoveredMin(null)}
-            style={{ width: '100%', height: 56, cursor: planMode ? 'pointer' : 'crosshair', background: t.subtleBg, borderRadius: 10, overflow: 'hidden', position: 'relative' }}
+            style={{ width: '100%', height: 64, cursor: planMode ? 'pointer' : 'crosshair', background: t.subtleBg, borderRadius: 12, overflow: 'hidden', position: 'relative', touchAction: 'none' }}
           >
             <div style={{ display: 'flex', height: '100%', alignItems: 'flex-end', gap: 1.5, padding: '0 2px' }}>
               {forecast.map((m, i) => {
                 const s = getStyle(m.condition, m.precip);
-                const barH = m.precip > 0 ? 14 + m.precip * 48 : 5;
+                const barH = m.precip > 0 ? 16 + m.precip * 54 : 6;
                 return (
                   <div key={i} style={{
                     flex: 1, minWidth: 2, height: `${Math.round(barH)}px`,
                     background: s.barColor, borderRadius: '3px 3px 0 0',
-                    opacity: i < nowMin ? 0.15 : hoveredMin === i ? 1 : 0.75,
+                    opacity: i < nowMin ? 0.2 : hoveredMin === i ? 1 : 0.88,
                     transition: 'opacity 0.12s',
                   }} />
                 );
@@ -461,14 +462,15 @@ export function HomeScreen({
                 <div key={tr.minute} style={{
                   position: 'absolute', top: 0, bottom: 0,
                   left: `${(tr.minute / 59) * 100}%`,
-                  width: 1, background: `${ts.barColor}90`, pointerEvents: 'none',
+                  width: 1.5, background: `${ts.barColor}b0`, pointerEvents: 'none',
                 }}>
                   <div style={{
-                    position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)',
-                    fontSize: 7, fontWeight: 700, color: ts.textAccent,
-                    background: t.transLabelBg, borderRadius: 3,
-                    padding: '1px 3px', letterSpacing: '0.04em', whiteSpace: 'nowrap',
+                    position: 'absolute', top: 5, left: '50%', transform: 'translateX(-50%)',
+                    fontSize: 9, fontWeight: 700, color: darkMode ? ts.barColor : ts.textAccent,
+                    background: t.transLabelBg, borderRadius: 4,
+                    padding: '2px 5px', letterSpacing: '0.05em', whiteSpace: 'nowrap',
                     textTransform: 'uppercase',
+                    boxShadow: darkMode ? '0 0 0 1px rgba(255,255,255,0.08)' : '0 0 0 1px rgba(0,0,0,0.05)',
                   }}>{ts.label.slice(0, 5)}</div>
                 </div>
               );
@@ -477,13 +479,13 @@ export function HomeScreen({
             {/* Now indicator */}
             <div style={{
               position: 'absolute', top: 0, bottom: 0,
-              left: `calc(${(nowMin / 59) * 100}% - 1px)`,
-              width: 2, background: t.nowLine, borderRadius: 1,
+              left: `calc(${(nowMin / 59) * 100}% - 1.5px)`,
+              width: 3, background: t.nowLine, borderRadius: 1.5,
               transition: 'left 0.35s ease',
             }}>
               <div style={{
-                position: 'absolute', top: -1, left: '50%', transform: 'translateX(-50%)',
-                width: 7, height: 7, borderRadius: '50%', background: t.nowLine,
+                position: 'absolute', top: -2, left: '50%', transform: 'translateX(-50%)',
+                width: 9, height: 9, borderRadius: '50%', background: t.nowLine,
                 animation: 'nowBlink 2s ease-in-out infinite',
               }} />
             </div>
@@ -492,23 +494,23 @@ export function HomeScreen({
             {leaveMin !== null && (
               <div style={{
                 position: 'absolute', top: 0, bottom: 0,
-                left: `calc(${(leaveMin / 59) * 100}% - 1px)`,
-                width: 2,
-                background: 'repeating-linear-gradient(to bottom, #d4a017 0px, #d4a017 4px, transparent 4px, transparent 8px)',
+                left: `calc(${(leaveMin / 59) * 100}% - 1.5px)`,
+                width: 3,
+                background: 'repeating-linear-gradient(to bottom, #d4a017 0px, #d4a017 5px, transparent 5px, transparent 10px)',
                 pointerEvents: 'none', transition: 'left 0.15s ease',
               }}>
                 <div style={{
-                  position: 'absolute', top: -5, left: '50%', transform: 'translateX(-50%) rotate(45deg)',
-                  width: 8, height: 8, background: '#d4a017', borderRadius: 1.5,
+                  position: 'absolute', top: -6, left: '50%', transform: 'translateX(-50%) rotate(45deg)',
+                  width: 10, height: 10, background: '#d4a017', borderRadius: 2,
                 }} />
               </div>
             )}
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5, padding: '0 1px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 7, padding: '0 1px' }}>
           {[0, 15, 30, 45, 60].map(tick => (
-            <span key={tick} style={{ fontSize: 10, color: t.text4, fontFamily: 'monospace' }}>
+            <span key={tick} style={{ fontSize: 11, fontWeight: 500, color: t.text3, fontFamily: 'monospace' }}>
               {tick === 0 ? 'now' : `+${tick}m`}
             </span>
           ))}
@@ -525,26 +527,26 @@ export function HomeScreen({
         return (
           <div style={{ margin: '10px 22px 0', position: 'relative', zIndex: 1 }}>
             <div style={{
-              background: t.cardStrong, borderRadius: 14, padding: '11px 16px',
-              border: '1.5px solid rgba(212,160,23,0.35)',
-              display: 'flex', alignItems: 'center', gap: 10,
+              background: t.cardStrong, borderRadius: 14, padding: '13px 16px',
+              border: '1.5px solid rgba(212,160,23,0.55)',
+              display: 'flex', alignItems: 'center', gap: 12,
             }}>
-              <div style={{ width: 8, height: 8, background: '#d4a017', borderRadius: 1.5, transform: 'rotate(45deg)', flexShrink: 0 }} />
+              <div style={{ width: 10, height: 10, background: '#d4a017', borderRadius: 2, transform: 'rotate(45deg)', flexShrink: 0 }} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: t.text1 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: t.text1 }}>
                   {minsUntil === 0 ? 'Leaving now' : `Leave in ${minsUntil} min`}
-                  <span style={{ fontWeight: 400, color: t.text3, marginLeft: 5 }}>{shortTime(leaveTime)}</span>
+                  <span style={{ fontWeight: 500, color: t.text3, marginLeft: 6 }}>{shortTime(leaveTime)}</span>
                 </div>
-                <div style={{ fontSize: 12, color: t.text3, marginTop: 2, display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <CondIcon condition={lm.condition} size={11} color={ls.accent} />
+                <div style={{ fontSize: 13, fontWeight: 500, color: t.text2, marginTop: 3, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <CondIcon condition={lm.condition} size={13} color={ls.accent} />
                   {ls.label} · {lTemp}{tempUnit}
                 </div>
               </div>
               <button onClick={() => { setLeaveMin(null); setPlanMode(false); }} style={{
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: t.text4, padding: 4, display: 'flex', alignItems: 'center', fontFamily: 'inherit',
+                background: t.subtleBg, border: 'none', cursor: 'pointer', borderRadius: '50%',
+                color: t.text2, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'inherit',
               }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
               </button>
@@ -558,8 +560,8 @@ export function HomeScreen({
 
         {/* HOURLY FORECAST */}
         {hourlyForecast.length > 0 && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 11, color: t.text3, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, margin: '0 22px 10px' }}>
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 12, color: t.text3, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600, margin: '0 22px 12px' }}>
               24-hour forecast
             </div>
             <div className="hourly-scroll" style={{ overflowX: 'auto', paddingLeft: 22, paddingRight: 22 }}>
@@ -569,11 +571,11 @@ export function HomeScreen({
                     const isSunrise = item.event === 'sunrise';
                     return (
                       <div key={`sun-${idx}`} style={{
-                        flexShrink: 0, width: 46, display: 'flex', flexDirection: 'column',
-                        alignItems: 'center', gap: 4, paddingBottom: 10, opacity: 0.7,
+                        flexShrink: 0, width: 52, display: 'flex', flexDirection: 'column',
+                        alignItems: 'center', gap: 5, paddingBottom: 12, opacity: 0.85,
                       }}>
-                        <div style={{ width: 1, height: 28, background: t.sunLine, borderRadius: 1 }} />
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d4a017" strokeWidth="2" strokeLinecap="round">
+                        <div style={{ width: 1.5, height: 32, background: t.sunLine, borderRadius: 1 }} />
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d4a017" strokeWidth="2" strokeLinecap="round">
                           {isSunrise ? (
                             <>
                               <path d="M12 2v2M4.93 4.93l1.41 1.41M2 12h2M19.07 4.93l-1.41 1.41M22 12h-2"/>
@@ -587,9 +589,9 @@ export function HomeScreen({
                             </>
                           )}
                         </svg>
-                        <div style={{ fontSize: 9, color: '#b88512', fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>
+                        <div style={{ fontSize: 11, color: darkMode ? '#d4a017' : '#9d6f00', fontWeight: 700, textAlign: 'center', lineHeight: 1.3 }}>
                           {isSunrise ? 'Rise' : 'Set'}<br/>
-                          <span style={{ fontWeight: 400, color: t.text3 }}>{shortTime(item.time)}</span>
+                          <span style={{ fontWeight: 500, color: t.text3 }}>{shortTime(item.time)}</span>
                         </div>
                       </div>
                     );
@@ -601,22 +603,22 @@ export function HomeScreen({
                   const barPct = h.precipProb / 100;
                   return (
                     <div key={`h-${item.index}`} style={{
-                      flexShrink: 0, width: 58,
+                      flexShrink: 0, width: 66,
                       background: isNowHour ? t.cardNow : t.cardHour,
                       borderRadius: 14,
-                      border: isNowHour ? `1.5px solid ${cs.accent}35` : `1.5px solid ${t.cardBorder}`,
+                      border: isNowHour ? `2px solid ${cs.accent}55` : `1.5px solid ${t.cardBorder}`,
                       display: 'flex', flexDirection: 'column', alignItems: 'center', overflow: 'hidden',
                     }}>
-                      <div style={{ padding: '11px 0 8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, width: '100%' }}>
-                        <div style={{ fontSize: 11, color: isNowHour ? t.condText : t.text3, fontWeight: isNowHour ? 700 : 400 }}>
+                      <div style={{ padding: '12px 0 9px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, width: '100%' }}>
+                        <div style={{ fontSize: 12, color: isNowHour ? t.condText : t.text2, fontWeight: isNowHour ? 700 : 600 }}>
                           {isNowHour ? 'now' : hourLabel(h.time)}
                         </div>
-                        <CondIcon condition={h.condition} size={15} color={hs.accent} />
-                        <div style={{ fontSize: 13, fontWeight: 600, color: t.text1 }}>{displayHTemp}°</div>
+                        <CondIcon condition={h.condition} size={18} color={hs.accent} />
+                        <div style={{ fontSize: 15, fontWeight: 600, color: t.text1 }}>{displayHTemp}°</div>
                       </div>
-                      <div style={{ width: '100%', height: 4, background: t.precipTrack }}>
+                      <div style={{ width: '100%', height: 5, background: t.precipTrack }}>
                         {barPct > 0.05 && (
-                          <div style={{ height: '100%', width: `${Math.round(barPct * 100)}%`, background: hs.barColor, opacity: 0.7, borderRadius: '0 2px 2px 0' }} />
+                          <div style={{ height: '100%', width: `${Math.round(barPct * 100)}%`, background: hs.barColor, opacity: 0.85, borderRadius: '0 2px 2px 0' }} />
                         )}
                       </div>
                     </div>
@@ -629,9 +631,9 @@ export function HomeScreen({
 
         {/* DETAIL CARD */}
         <div style={{ margin: '0 22px' }}>
-          <div style={{ background: t.card, borderRadius: 18, overflow: 'hidden', border: `1px solid ${t.cardBorder}` }}>
-            <div style={{ padding: '4px 16px 0' }}>
-              <div style={{ fontSize: 11, color: t.text3, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 500, padding: '12px 0 8px' }}>
+          <div style={{ background: t.card, borderRadius: 18, overflow: 'hidden', border: `1.5px solid ${t.cardBorder}` }}>
+            <div style={{ padding: '4px 18px 0' }}>
+              <div style={{ fontSize: 12, color: t.text3, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600, padding: '14px 0 10px' }}>
                 What to expect
               </div>
               {chunks.map((chunk, idx) => {
@@ -639,26 +641,26 @@ export function HomeScreen({
                 const timeStr = chunk.isNow ? 'Now' : `+${chunk.start - nowMin} min`;
                 return (
                   <div key={idx} style={{
-                    display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0',
+                    display: 'flex', alignItems: 'center', gap: 13, padding: '12px 0',
                     borderBottom: idx < chunks.length - 1 ? `1px solid ${t.dividerSoft}` : 'none',
-                    opacity: chunk.isNow ? 1 : 0.55,
+                    opacity: chunk.isNow ? 1 : 0.7,
                   }}>
-                    <div style={{ width: 3, alignSelf: 'stretch', background: s.barColor, borderRadius: 2, flexShrink: 0 }} />
-                    <CondIcon condition={chunk.condition} size={18} color={s.accent} />
+                    <div style={{ width: 4, alignSelf: 'stretch', background: s.barColor, borderRadius: 2, flexShrink: 0 }} />
+                    <CondIcon condition={chunk.condition} size={20} color={s.accent} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: t.text1 }}>{condLabelMap[chunk.condition]}</div>
-                      <div style={{ fontSize: 12, color: t.text3, marginTop: 1 }}>{chunkDesc(chunk.condition, chunk.isNow)}</div>
+                      <div style={{ fontSize: 15, fontWeight: 600, color: t.text1 }}>{condLabelMap[chunk.condition]}</div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: t.text3, marginTop: 2 }}>{chunkDesc(chunk.condition, chunk.isNow)}</div>
                     </div>
                     <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: darkMode ? s.barColor : s.textAccent }}>{timeStr}</div>
-                      <div style={{ fontSize: 11, color: t.text4, marginTop: 1 }}>{chunk.duration}min</div>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: darkMode ? s.barColor : s.textAccent }}>{timeStr}</div>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: t.text4, marginTop: 2 }}>{chunk.duration}min</div>
                     </div>
                   </div>
                 );
               })}
             </div>
             <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
-            <div style={{ display: 'flex', padding: '14px 0 16px' }}>
+            <div style={{ display: 'flex', padding: '16px 0 18px' }}>
               {[
                 { label: 'Wind',  value: `${windLabel} ${displayWindUnit}` },
                 { label: 'Humid', value: `${humidity}%` },
@@ -669,8 +671,8 @@ export function HomeScreen({
                   flex: 1, textAlign: 'center',
                   borderRight: i < arr.length - 1 ? `1px solid ${t.dividerStat}` : 'none',
                 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: t.text1 }}>{s.value}</div>
-                  <div style={{ fontSize: 10, color: t.text3, marginTop: 3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: t.text1 }}>{s.value}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: t.text3, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
                 </div>
               ))}
             </div>
