@@ -52,9 +52,9 @@ export function WelcomeScreen({ onGeolocate, onPickCity, darkMode = false }: Pro
         </div>
 
         <h1 style={{
-          fontFamily: 'Cormorant Garamond, serif',
-          fontSize: 38, fontWeight: 400, color: text1,
-          letterSpacing: '-0.02em', lineHeight: 1.1, margin: 0,
+          fontFamily: 'inherit',
+          fontSize: 34, fontWeight: 600, color: text1,
+          letterSpacing: '-0.025em', lineHeight: 1.1, margin: 0,
         }}>
           Weather for the<br/>next hour.
         </h1>

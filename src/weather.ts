@@ -123,7 +123,20 @@ export function buildForecast(key: ScenarioKey = 'rain_clearing'): MinuteForecas
 }
 
 // ── PIRATE WEATHER API ─────────────────────────────────────────────────────
+// If VITE_API_PROXY_URL is set at build time, all requests go through that
+// Cloudflare Worker (see /worker) which holds the Pirate Weather key
+// server-side. Otherwise we fall back to direct calls with the embedded
+// key — fine for dev, leaky for production. See worker/README.md.
+const API_PROXY_URL: string | undefined = import.meta.env.VITE_API_PROXY_URL;
 const API_KEY = 'pPrBGDNcJMvdc6hKoEMc6sl13R44I0UE';
+
+function buildForecastUrl(lat: number, lng: number, query: string, ts?: number): string {
+  const path = ts !== undefined ? `${lat},${lng},${ts}` : `${lat},${lng}`;
+  if (API_PROXY_URL) {
+    return `${API_PROXY_URL.replace(/\/$/, '')}/forecast/${path}?${query}`;
+  }
+  return `https://api.pirateweather.net/forecast/${API_KEY}/${path}?${query}`;
+}
 
 function mmToIntensity(mmPerHour: number): number {
   return Math.min(1, mmPerHour / 10);
@@ -169,7 +182,7 @@ function kmToMiles(km: number): number { return km * 0.621371; }
 
 export async function fetchLiveData(lat: number, lng: number): Promise<LiveData | null> {
   try {
-    const url = `https://api.pirateweather.net/forecast/${API_KEY}/${lat},${lng}?units=ca`;
+    const url = buildForecastUrl(lat, lng, 'units=ca');
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
@@ -271,7 +284,7 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
 export async function fetchYesterdayTemp(lat: number, lng: number): Promise<number | null> {
   try {
     const ts = Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000);
-    const url = `https://api.pirateweather.net/forecast/${API_KEY}/${lat},${lng},${ts}?exclude=alerts,minutely,daily&units=ca`;
+    const url = buildForecastUrl(lat, lng, 'exclude=alerts,minutely,daily&units=ca', ts);
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
