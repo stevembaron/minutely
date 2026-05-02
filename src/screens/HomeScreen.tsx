@@ -233,7 +233,7 @@ export function HomeScreen({
     return baseDescMap[condition] ?? '';
   }
 
-  const uvLabel = uvIndex <= 2 ? 'Low' : uvIndex <= 5 ? 'Moderate' : uvIndex <= 7 ? 'High' : 'Very High';
+  const uvLabel = uvIndex <= 2 ? 'Low' : uvIndex <= 5 ? 'Mod' : uvIndex <= 7 ? 'High' : 'V.High';
   const isStale = lastUpdated != null && (Date.now() - lastUpdated.getTime()) > 25 * 60 * 1000;
   const windLabel = windBearing != null ? `${bearingToDir(windBearing)} ${displayWind}` : `${displayWind}`;
   const isRaining = current.condition === 'rain' || current.condition === 'drizzle';
@@ -677,7 +677,7 @@ export function HomeScreen({
                   flex: 1, textAlign: 'center',
                   borderRight: i < arr.length - 1 ? `1px solid ${t.dividerStat}` : 'none',
                 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: t.text1 }}>{s.value}</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: t.text1, whiteSpace: 'nowrap' }}>{s.value}</div>
                   <div style={{ fontSize: 11, fontWeight: 600, color: t.text3, marginTop: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{s.label}</div>
                 </div>
               ))}
