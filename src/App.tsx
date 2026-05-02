@@ -17,6 +17,9 @@ function save(key: string, value: unknown) {
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const [nowMin, setNowMin] = useState(0);
+  const [darkMode, setDarkMode] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
+  );
   const [scenario, setScenario] = useState<ScenarioKey>('rain_clearing');
   const [forecast, setForecast] = useState<MinuteForecast[]>(() => buildForecast('rain_clearing'));
   const [location, setLocation] = useState<string>(() => load('soon-location', 'San Francisco, CA'));
@@ -36,6 +39,14 @@ export default function App() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [fetchError, setFetchError] = useState(false);
+
+  // Dark mode listener
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => setDarkMode(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
 
   // Persist settings and location
   useEffect(() => { save('soon-settings', settings); }, [settings]);
@@ -137,6 +148,7 @@ export default function App() {
           refreshing={refreshing}
           fetchError={fetchError}
           onRefresh={() => locationCoords && doFetch(locationCoords)}
+          darkMode={darkMode}
         />
       )}
       {screen === 'settings' && (
@@ -147,6 +159,7 @@ export default function App() {
           onAdmin={() => navigate('admin')}
           onLocations={() => navigate('locations')}
           currentLocation={location}
+          darkMode={darkMode}
         />
       )}
       {screen === 'locations' && (
@@ -154,6 +167,7 @@ export default function App() {
           onBack={() => navigate('settings')}
           location={location}
           selectLocation={selectLocation}
+          darkMode={darkMode}
         />
       )}
       {screen === 'admin' && (
@@ -184,7 +198,7 @@ export default function App() {
   }
 
   return (
-    <IOSDevice dark={false}>
+    <IOSDevice dark={darkMode}>
       {content}
     </IOSDevice>
   );

@@ -35,6 +35,13 @@ html, body {
   #root { align-items: flex-start; }
 }
 
+@media (prefers-color-scheme: dark) {
+  html, body { background: #111318; }
+  @media (max-width: 480px) {
+    html, body { background: #111318; }
+  }
+}
+
 /* Hide scrollbars on the hourly forecast strip everywhere */
 .hourly-scroll { scrollbar-width: none; }
 .hourly-scroll::-webkit-scrollbar { display: none; }

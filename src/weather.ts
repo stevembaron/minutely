@@ -1,11 +1,11 @@
 import type { Condition, MinuteForecast, LocationInfo, ScenarioKey, CurrentConditions, HourlyForecast } from './types';
 
 // ── COLOR / STYLE SYSTEM ───────────────────────────────────────────────────
-export const CONDITION_STYLE: Record<Condition, { barColor: string; accent: string; bg: string; textAccent: string; label: string }> = {
-  clear:    { barColor: '#3d9e5f', accent: '#2e7d4a', bg: '#edf8f2', textAccent: '#256038', label: 'Clear'    },
-  clearing: { barColor: '#8db840', accent: '#6e9630', bg: '#f3f8eb', textAccent: '#4f6e22', label: 'Clearing' },
-  drizzle:  { barColor: '#d4a017', accent: '#b88512', bg: '#fbf6e8', textAccent: '#8a620d', label: 'Drizzle'  },
-  rain:     { barColor: '#c94f2a', accent: '#a83e1e', bg: '#f2eceb', textAccent: '#8a2e10', label: 'Rain'     },
+export const CONDITION_STYLE: Record<Condition, { barColor: string; accent: string; bg: string; bgDark: string; textAccent: string; label: string }> = {
+  clear:    { barColor: '#3d9e5f', accent: '#2e7d4a', bg: '#edf8f2', bgDark: '#0b1a10', textAccent: '#256038', label: 'Clear'    },
+  clearing: { barColor: '#8db840', accent: '#6e9630', bg: '#f3f8eb', bgDark: '#0e1b0b', textAccent: '#4f6e22', label: 'Clearing' },
+  drizzle:  { barColor: '#d4a017', accent: '#b88512', bg: '#fbf6e8', bgDark: '#1a1408', textAccent: '#8a620d', label: 'Drizzle'  },
+  rain:     { barColor: '#c94f2a', accent: '#a83e1e', bg: '#f2eceb', bgDark: '#160d0d', textAccent: '#8a2e10', label: 'Rain'     },
 };
 
 export function getStyle(condition: Condition, precip: number) {

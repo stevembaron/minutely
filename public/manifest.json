@@ -1,0 +1,25 @@
+{
+  "name": "Soon — Weather",
+  "short_name": "Soon",
+  "description": "Minute-by-minute weather for the next hour",
+  "start_url": "/minutely/",
+  "scope": "/minutely/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7f5f2",
+  "theme_color": "#3d9e5f",
+  "icons": [
+    {
+      "src": "/minutely/soon-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/minutely/soon-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
