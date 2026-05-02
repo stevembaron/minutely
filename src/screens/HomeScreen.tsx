@@ -243,7 +243,6 @@ export function HomeScreen({
     <div style={{
       width: '100%', height: '100%',
       background: timeOfDayBackground(cs.bg, cs.bgDark, darkMode),
-      display: 'flex', flexDirection: 'column',
       transition: 'background 0.9s ease',
       overflow: 'hidden', position: 'relative',
     }}>
@@ -266,8 +265,15 @@ export function HomeScreen({
         </div>
       )}
 
+      {/* SCROLL CONTAINER — entire screen scrolls as one */}
+      <div style={{
+        position: 'relative', zIndex: 1, height: '100%',
+        overflowY: 'auto', overflowX: 'hidden',
+        WebkitOverflowScrolling: 'touch',
+      }}>
+
       {/* HEADER */}
-      <div style={{ padding: 'var(--top-safe) 22px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
+      <div style={{ padding: 'var(--top-safe) 22px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -555,8 +561,8 @@ export function HomeScreen({
         );
       })()}
 
-      {/* SCROLLABLE LOWER SECTION */}
-      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 'var(--bottom-safe)', marginTop: 18, position: 'relative', zIndex: 1 }}>
+      {/* LOWER SECTION (now part of single page scroll) */}
+      <div style={{ paddingBottom: 'var(--bottom-safe)', marginTop: 18 }}>
 
         {/* HOURLY FORECAST */}
         {hourlyForecast.length > 0 && (
@@ -679,6 +685,7 @@ export function HomeScreen({
           </div>
         </div>
 
+      </div>
       </div>
     </div>
   );
