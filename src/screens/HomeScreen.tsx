@@ -185,6 +185,21 @@ export function HomeScreen({
     return res;
   })();
 
+  // Current-segment label for the timeline: shows what's happening now and
+  // how long it'll last. This is the "answer" — the timeline data shaped
+  // into a decision.
+  const currentSegment = (() => {
+    const cond = current.condition;
+    let end = nowMin + 1;
+    while (end < 60 && forecast[end].condition === cond) end++;
+    const duration = end - nowMin;
+    if (duration < 2) return null;
+    const isDryNow  = cond === 'clear' || cond === 'clearing';
+    const label = isDryNow ? 'DRY' : (cond === 'rain' ? 'RAIN' : cond === 'drizzle' ? 'DRIZZLE' : cond === 'snow' ? 'SNOW' : cond === 'flurries' ? 'FLURRIES' : cond === 'sleet' ? 'SLEET' : '');
+    if (!label) return null;
+    return { start: nowMin, end: end - 1, duration, label, condition: cond, isDryNow };
+  })();
+
   const condNoun = (c: MinuteForecast['condition']): string => {
     if (c === 'rain')     return 'Rain';
     if (c === 'drizzle')  return 'Drizzle';
@@ -525,70 +540,72 @@ export function HomeScreen({
         </div>
       )}
 
-      {/* HERO */}
-      <div style={{ padding: '20px 22px 0', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
-        <div>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 7,
-            background: darkMode ? cs.accent + '28' : cs.accent + '22', borderRadius: 7,
-            padding: '5px 11px 5px 9px', marginBottom: 14, transition: 'background 0.8s',
-          }}>
-            <CondIcon condition={current.condition} size={14} color={cs.accent} />
-            <span style={{ fontSize: 12, fontWeight: 700, color: t.condText, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{cs.label}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'flex-start', lineHeight: 1 }}>
-            <div style={{ fontSize: 92, fontWeight: 300, color: t.text1, letterSpacing: '-0.04em' }}>{displayTemp}</div>
-            <div style={{ fontSize: 40, fontWeight: 300, color: t.text1, marginTop: 12, marginLeft: 2 }}>{tempUnit}</div>
-          </div>
-          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <div style={{ color: t.text2, fontSize: 14, fontWeight: 500 }}>Feels like {displayFeels}° · {humidity}% humidity</div>
-            {highTemp !== null && lowTemp !== null && (
-              <div style={{ color: t.text3, fontSize: 13, fontWeight: 500 }}>H: {highTemp}° &nbsp; L: {lowTemp}°</div>
-            )}
-            {yesterdayDelta && (
-              <div style={{
-                color: yesterdayDelta.sign > 0 ? '#c94f2a' : yesterdayDelta.sign < 0 ? '#4a6e94' : t.text3,
-                fontSize: 13, fontWeight: 600, marginTop: 1,
-              }}>
-                {yesterdayDelta.sign > 0 ? '↑ ' : yesterdayDelta.sign < 0 ? '↓ ' : ''}{yesterdayDelta.text}
-              </div>
-            )}
-          </div>
-        </div>
-        <div style={{ paddingBottom: 28, opacity: 0.75, flexShrink: 0 }}>
-          <CondIcon condition={current.condition} size={54} color={cs.accent} />
-        </div>
-      </div>
+      {/* HERO — leads with the timing decision, temp is supporting */}
+      <div style={{ padding: '20px 22px 0', position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 7,
+              background: darkMode ? cs.accent + '28' : cs.accent + '22', borderRadius: 7,
+              padding: '5px 11px 5px 9px', marginBottom: 12, transition: 'background 0.8s',
+            }}>
+              <CondIcon condition={current.condition} size={14} color={cs.accent} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: t.condText, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{cs.label}</span>
+            </div>
 
-      {/* NEXT EVENT CALLOUT */}
-      <div style={{ margin: '20px 22px 0', position: 'relative', zIndex: 1 }}>
-        <div style={{
-          background: t.cardStrong, borderRadius: 14, padding: '14px 16px',
-          border: `1.5px solid ${cs.accent}45`,
-          display: 'flex', alignItems: 'center', gap: 10,
-          transition: 'border-color 0.8s',
-        }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: cs.barColor, flexShrink: 0 }} />
-          <span style={{ fontSize: 15, fontWeight: 600, color: t.text1, flex: 1 }}>{nextEvent}</span>
-          <button onClick={onRefresh} disabled={refreshing} style={{
-            background: 'none', border: 'none', cursor: refreshing ? 'default' : 'pointer',
-            padding: 8, color: t.text3, display: 'flex', alignItems: 'center',
-            opacity: refreshing ? 0.4 : 1, transition: 'opacity 0.2s', flexShrink: 0,
-            minWidth: 32, minHeight: 32, justifyContent: 'center',
-          }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
-              style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>
-              <polyline points="23 4 23 10 17 10"/>
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-            </svg>
-          </button>
+            <div style={{
+              fontSize: 32, fontWeight: 600, color: t.text1,
+              letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: 10,
+            }}>
+              {nextEvent}
+            </div>
+
+            <div style={{ fontSize: 17, fontWeight: 600, color: t.text2, letterSpacing: '-0.01em' }}>
+              <span style={{ color: t.text1, fontWeight: 700 }}>{displayTemp}{tempUnit}</span>
+              <span style={{ fontWeight: 500, color: t.text3 }}> · feels {displayFeels}° · {humidity}%</span>
+            </div>
+
+            <div style={{ fontSize: 13, fontWeight: 500, color: t.text3, marginTop: 4, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+              {highTemp !== null && lowTemp !== null && (
+                <span>H {highTemp}°  L {lowTemp}°</span>
+              )}
+              {yesterdayDelta && (
+                <span style={{
+                  color: yesterdayDelta.sign > 0 ? '#c94f2a' : yesterdayDelta.sign < 0 ? '#4a6e94' : t.text3,
+                  fontWeight: 600,
+                }}>
+                  {yesterdayDelta.sign > 0 ? '↑ ' : yesterdayDelta.sign < 0 ? '↓ ' : ''}{yesterdayDelta.text}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, flexShrink: 0 }}>
+            <button onClick={onRefresh} disabled={refreshing} aria-label="Refresh" style={{
+              background: t.btnBg, border: `1.5px solid ${t.btnBorder}`,
+              borderRadius: 22, padding: '9px 11px', cursor: refreshing ? 'default' : 'pointer',
+              fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              minWidth: 38, minHeight: 38, color: t.text2,
+              opacity: refreshing ? 0.4 : 1, transition: 'opacity 0.2s',
+            }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+                style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }}>
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
+            <div style={{ opacity: 0.85 }}>
+              <CondIcon condition={current.condition} size={48} color={cs.accent} />
+            </div>
+          </div>
         </div>
+
         {fetchError ? (
-          <div style={{ fontSize: 12, color: '#c0392b', fontWeight: 500, marginTop: 6, textAlign: 'right', paddingRight: 2 }}>
-            Couldn't update · tap to retry
+          <div style={{ fontSize: 12, color: '#c0392b', fontWeight: 500, marginTop: 10, paddingRight: 2 }}>
+            Couldn't update · tap refresh to retry
           </div>
         ) : lastUpdated && (
-          <div style={{ fontSize: 11, color: isStale ? '#d4a017' : t.text4, fontWeight: 500, marginTop: 6, textAlign: 'right', paddingRight: 2, transition: 'color 0.3s' }}>
+          <div style={{ fontSize: 11, color: isStale ? '#d4a017' : t.text4, fontWeight: 500, marginTop: 10, paddingRight: 2, transition: 'color 0.3s' }}>
             {isStale ? '⚠ ' : ''}Updated {formatAge(lastUpdated)}
           </div>
         )}
@@ -713,7 +730,7 @@ export function HomeScreen({
               })}
             </div>
 
-            {/* Best dry window highlight */}
+            {/* Best dry window highlight (future dry break after rain) */}
             {bestWindow && (
               <div style={{
                 position: 'absolute', top: 0, bottom: 0,
@@ -723,8 +740,41 @@ export function HomeScreen({
                 borderLeft: '1.5px solid rgba(61,158,95,0.55)',
                 borderRight: '1.5px solid rgba(61,158,95,0.55)',
                 pointerEvents: 'none',
-              }} />
+              }}>
+                <div style={{
+                  position: 'absolute', top: 5, left: '50%', transform: 'translateX(-50%)',
+                  fontSize: 9, fontWeight: 800, color: '#256038',
+                  background: t.transLabelBg, borderRadius: 4,
+                  padding: '2px 6px', letterSpacing: '0.07em', whiteSpace: 'nowrap',
+                  boxShadow: darkMode ? '0 0 0 1px rgba(61,158,95,0.25)' : '0 0 0 1px rgba(61,158,95,0.18)',
+                }}>DRY · {bestWindow.end - bestWindow.start + 1}M</div>
+              </div>
             )}
+
+            {/* CURRENT-SEGMENT LABEL — what's happening now and for how long */}
+            {currentSegment && (() => {
+              const segCs = getStyle(currentSegment.condition, current.precip);
+              const labelColor = currentSegment.isDryNow
+                ? '#256038'
+                : (darkMode ? segCs.barColor : segCs.textAccent);
+              const startPct = (currentSegment.start / 59) * 100;
+              const endPct   = ((currentSegment.end + 1) / 59) * 100;
+              const midPct   = (startPct + endPct) / 2;
+              return (
+                <div style={{
+                  position: 'absolute', top: 5,
+                  left: `${Math.max(8, Math.min(92, midPct))}%`,
+                  transform: 'translateX(-50%)',
+                  fontSize: 10, fontWeight: 800, color: labelColor,
+                  background: t.transLabelBg, borderRadius: 5,
+                  padding: '3px 7px', letterSpacing: '0.08em', whiteSpace: 'nowrap',
+                  boxShadow: darkMode ? `0 0 0 1px ${segCs.barColor}40` : `0 0 0 1px ${segCs.barColor}30`,
+                  pointerEvents: 'none', zIndex: 2,
+                }}>
+                  {currentSegment.label} · {currentSegment.duration}M
+                </div>
+              );
+            })()}
 
             {/* Condition transition markers */}
             {transitions.map(tr => {
