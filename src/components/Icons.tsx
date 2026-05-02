@@ -42,9 +42,44 @@ export function IconClear({ size = 28, color = 'currentColor' }: IconProps) {
   </svg>;
 }
 
+export function IconSnow({ size = 28, color = 'currentColor' }: IconProps) {
+  return <svg width={size} height={size} viewBox="0 0 28 28" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 17a6 6 0 1 1 11.6-2.2A4.5 4.5 0 1 1 19 23H8a3.5 3.5 0 0 1-1-6.9"/>
+    <g strokeWidth="1.4">
+      <line x1="10" y1="25" x2="10" y2="27"/><line x1="9" y1="26" x2="11" y2="26"/>
+      <line x1="14" y1="25" x2="14" y2="27"/><line x1="13" y1="26" x2="15" y2="26"/>
+      <line x1="18" y1="25" x2="18" y2="27"/><line x1="17" y1="26" x2="19" y2="26"/>
+    </g>
+  </svg>;
+}
+
+export function IconFlurries({ size = 28, color = 'currentColor' }: IconProps) {
+  return <svg width={size} height={size} viewBox="0 0 28 28" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 17a6 6 0 1 1 11.6-2.2A4.5 4.5 0 1 1 19 23H8a3.5 3.5 0 0 1-1-6.9"/>
+    <g strokeWidth="1.4">
+      <line x1="11" y1="25" x2="11" y2="26.5"/><line x1="10.25" y1="25.75" x2="11.75" y2="25.75"/>
+      <line x1="17" y1="25" x2="17" y2="26.5"/><line x1="16.25" y1="25.75" x2="17.75" y2="25.75"/>
+    </g>
+  </svg>;
+}
+
+export function IconSleet({ size = 28, color = 'currentColor' }: IconProps) {
+  return <svg width={size} height={size} viewBox="0 0 28 28" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 17a6 6 0 1 1 11.6-2.2A4.5 4.5 0 1 1 19 23H8a3.5 3.5 0 0 1-1-6.9"/>
+    <line x1="10" y1="24" x2="9.5" y2="26.5"/>
+    <g strokeWidth="1.4">
+      <line x1="14" y1="25" x2="14" y2="26.5"/><line x1="13.25" y1="25.75" x2="14.75" y2="25.75"/>
+    </g>
+    <line x1="18" y1="24" x2="17.5" y2="26.5"/>
+  </svg>;
+}
+
 export function CondIcon({ condition, size, color }: { condition: Condition; size?: number; color?: string }) {
   if (condition === 'rain')     return <IconRain size={size} color={color} />;
   if (condition === 'drizzle')  return <IconDrizzle size={size} color={color} />;
+  if (condition === 'snow')     return <IconSnow size={size} color={color} />;
+  if (condition === 'flurries') return <IconFlurries size={size} color={color} />;
+  if (condition === 'sleet')    return <IconSleet size={size} color={color} />;
   if (condition === 'clearing') return <IconClearing size={size} color={color} />;
   return <IconClear size={size} color={color} />;
 }

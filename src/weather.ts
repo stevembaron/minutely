@@ -6,11 +6,17 @@ export const CONDITION_STYLE: Record<Condition, { barColor: string; accent: stri
   clearing: { barColor: '#8db840', accent: '#6e9630', bg: '#f3f8eb', bgDark: '#0e1b0b', textAccent: '#4f6e22', label: 'Clearing' },
   drizzle:  { barColor: '#d4a017', accent: '#b88512', bg: '#fbf6e8', bgDark: '#1a1408', textAccent: '#8a620d', label: 'Drizzle'  },
   rain:     { barColor: '#c94f2a', accent: '#a83e1e', bg: '#f2eceb', bgDark: '#160d0d', textAccent: '#8a2e10', label: 'Rain'     },
+  flurries: { barColor: '#9eb5cd', accent: '#7592b0', bg: '#f0f5fa', bgDark: '#0f1620', textAccent: '#4d6e8e', label: 'Flurries' },
+  snow:     { barColor: '#6b8caf', accent: '#4a6e94', bg: '#eaf1f7', bgDark: '#0d1521', textAccent: '#2d5076', label: 'Snow'     },
+  sleet:    { barColor: '#8b7da8', accent: '#6e6188', bg: '#f1eef5', bgDark: '#131019', textAccent: '#4f4566', label: 'Sleet'    },
 };
 
 export function getStyle(condition: Condition, precip: number) {
   if (condition === 'rain' && precip > 0.65) {
     return { ...CONDITION_STYLE.rain, barColor: '#b03020', label: 'Heavy Rain' };
+  }
+  if (condition === 'snow' && precip > 0.65) {
+    return { ...CONDITION_STYLE.snow, barColor: '#3d5d80', label: 'Heavy Snow' };
   }
   return CONDITION_STYLE[condition] ?? CONDITION_STYLE.clear;
 }
@@ -77,6 +83,39 @@ export const SCENARIOS: Record<ScenarioKey, { label: string; desc: string; build
       temp: 56 + i * 0.06 + (Math.random() - 0.5) * 0.3,
     })),
   },
+  snow_clearing: {
+    label: 'Snow clearing',
+    desc: 'Snowing now, eases at ~25 min',
+    build: () => Array.from({ length: 60 }, (_, i) => {
+      let precip: number, condition: Condition;
+      if (i < 8)        { precip = 0.55 + Math.random() * 0.2; condition = 'snow'; }
+      else if (i < 18)  { precip = 0.32 + Math.random() * 0.18; condition = 'snow'; }
+      else if (i < 28)  { precip = 0.15 + Math.random() * 0.12; condition = 'flurries'; }
+      else if (i < 35)  { precip = 0.04 + Math.random() * 0.05; condition = 'clearing'; }
+      else              { precip = 0; condition = 'clear'; }
+      return { minute: i, precip, condition, temp: 28 + i * 0.05 + (Math.random() - 0.5) * 0.3 };
+    }),
+  },
+  snowstorm: {
+    label: 'Snowstorm',
+    desc: 'Heavy snow all hour',
+    build: () => Array.from({ length: 60 }, (_, i) => ({
+      minute: i, precip: 0.7 + Math.random() * 0.25, condition: 'snow' as Condition,
+      temp: 22 + i * 0.04 + (Math.random() - 0.5) * 0.3,
+    })),
+  },
+  sleet_mix: {
+    label: 'Sleet / wintry mix',
+    desc: 'Mixed sleet and snow',
+    build: () => Array.from({ length: 60 }, (_, i) => {
+      let condition: Condition;
+      const r = (i + Math.floor(Math.random() * 3)) % 7;
+      if (r < 3)      condition = 'sleet';
+      else if (r < 5) condition = 'flurries';
+      else            condition = 'snow';
+      return { minute: i, precip: 0.3 + Math.random() * 0.25, condition, temp: 33 + (Math.random() - 0.5) * 0.4 };
+    }),
+  },
 };
 
 export function buildForecast(key: ScenarioKey = 'rain_clearing'): MinuteForecast[] {
@@ -90,18 +129,26 @@ function mmToIntensity(mmPerHour: number): number {
   return Math.min(1, mmPerHour / 10);
 }
 
-function intensityToCondition(mmPerHour: number): Condition {
-  if (mmPerHour < 0.1)  return 'clear';
-  if (mmPerHour < 2.5)  return 'drizzle';
-  return 'rain';
+// Pirate Weather precipType: 'rain' | 'snow' | 'sleet' | undefined
+function intensityToCondition(mmPerHour: number, precipType?: string): Condition {
+  if (mmPerHour < 0.1) return 'clear';
+  if (precipType === 'snow') {
+    // Snow mm/hr is liquid-equivalent; ~1 mm liquid ≈ 10mm of snow
+    return mmPerHour < 1.0 ? 'flurries' : 'snow';
+  }
+  if (precipType === 'sleet') return 'sleet';
+  return mmPerHour < 2.5 ? 'drizzle' : 'rain';
 }
 
 // Map Pirate Weather / Dark Sky icon strings to our Condition type
-function iconToCondition(icon: string, precipMm: number): Condition {
-  if (icon === 'rain' || icon === 'sleet')          return precipMm < 2.5 ? 'drizzle' : 'rain';
+function iconToCondition(icon: string, precipMm: number, precipType?: string): Condition {
+  if (icon === 'snow')                              return precipMm < 1.0 ? 'flurries' : 'snow';
+  if (icon === 'sleet')                             return 'sleet';
+  if (icon === 'rain')                              return precipMm < 2.5 ? 'drizzle' : 'rain';
   if (icon === 'cloudy' || icon === 'fog')          return 'clearing';
   if (icon === 'partly-cloudy-day' || icon === 'partly-cloudy-night') return 'clearing';
-  return intensityToCondition(precipMm);
+  // No icon hint — fall back to precipType + intensity
+  return intensityToCondition(precipMm, precipType);
 }
 
 function celsiusToFahrenheit(c: number): number {
@@ -131,7 +178,8 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
     const currentTempF = celsiusToFahrenheit(currentTempC);
     const currentIcon: string = c.icon ?? '';
     const currentPrecip: number = c.precipIntensity ?? 0;
-    const currentCondition = iconToCondition(currentIcon, currentPrecip);
+    const currentPrecipType: string | undefined = c.precipType;
+    const currentCondition = iconToCondition(currentIcon, currentPrecip, currentPrecipType);
 
     const daily0 = data.daily?.data?.[0] ?? {};
     const current: CurrentConditions = {
@@ -151,19 +199,22 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
     let forecast: MinuteForecast[] | null = null;
 
     if (data.minutely?.data && data.minutely.data.length >= 60) {
-      forecast = data.minutely.data.slice(0, 60).map((m: { precipIntensity: number }, i: number) => {
+      forecast = data.minutely.data.slice(0, 60).map((m: { precipIntensity: number; precipType?: string }, i: number) => {
         const mmPerHour = m.precipIntensity ?? 0;
-        const condition = i === 0 ? currentCondition : intensityToCondition(mmPerHour);
+        // Minutely points often lack precipType; inherit current's type as a sensible fallback
+        const ptype = m.precipType ?? currentPrecipType;
+        const condition = i === 0 ? currentCondition : intensityToCondition(mmPerHour, ptype);
         return { minute: i, precip: Math.max(mmToIntensity(mmPerHour), i === 0 ? mmToIntensity(currentPrecip) : 0), condition, temp: currentTempF + i * 0.05 };
       });
     } else if (data.hourly?.data && data.hourly.data.length >= 2) {
       const h0 = data.hourly.data[0];
       const h1 = data.hourly.data[1];
+      const h0Type: string | undefined = h0.precipType ?? currentPrecipType;
       forecast = Array.from({ length: 60 }, (_, i) => {
         const t = i / 60;
         const precip = (h0.precipIntensity ?? 0) * (1 - t) + (h1.precipIntensity ?? 0) * t;
         const tempC = (h0.temperature ?? currentTempC) * (1 - t) + (h1.temperature ?? currentTempC) * t;
-        return { minute: i, precip: mmToIntensity(i === 0 ? Math.max(precip, currentPrecip) : precip), condition: i === 0 ? currentCondition : intensityToCondition(precip), temp: celsiusToFahrenheit(tempC) };
+        return { minute: i, precip: mmToIntensity(i === 0 ? Math.max(precip, currentPrecip) : precip), condition: i === 0 ? currentCondition : intensityToCondition(precip, h0Type), temp: celsiusToFahrenheit(tempC) };
       });
     }
 
@@ -171,13 +222,13 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
 
     const hourly: HourlyForecast[] = (data.hourly?.data ?? []).slice(0, 24).map((h: {
       time: number; icon?: string; temperature?: number;
-      precipIntensity?: number; precipProbability?: number;
+      precipIntensity?: number; precipProbability?: number; precipType?: string;
     }) => {
       const tempF = celsiusToFahrenheit(h.temperature ?? currentTempC);
       const precipMm = h.precipIntensity ?? 0;
       return {
         time: new Date((h.time ?? 0) * 1000),
-        condition: iconToCondition(h.icon ?? '', precipMm),
+        condition: iconToCondition(h.icon ?? '', precipMm, h.precipType),
         precip: mmToIntensity(precipMm),
         temp: tempF,
         precipProb: Math.round((h.precipProbability ?? 0) * 100),

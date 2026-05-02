@@ -18,6 +18,7 @@ interface Props {
 const ADMIN_LOCATIONS = ['San Francisco, CA', 'New York, NY', 'Chicago, IL', 'Miami, FL', 'Seattle, WA', 'Austin, TX'];
 const DOT_COLORS: Record<ScenarioKey, string> = {
   rain_clearing: '#c94f2a', all_clear: '#3d9e5f', storm_incoming: '#b03020', steady_rain: '#a83e1e', drizzle: '#d4a017',
+  snow_clearing: '#6b8caf', snowstorm: '#3d5d80', sleet_mix: '#8b7da8',
 };
 
 function SectionLabel({ children, dark }: { children: React.ReactNode; dark: boolean }) {

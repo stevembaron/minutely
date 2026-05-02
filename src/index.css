@@ -65,3 +65,11 @@ button, input { -webkit-tap-highlight-color: transparent; }
   92%  { opacity: 0.8; }
   100% { transform: translateY(115vh) skewX(-12deg); opacity: 0; }
 }
+
+@keyframes snowFall {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  10%  { opacity: 1; }
+  50%  { transform: translate(8px, 50vh); }
+  90%  { opacity: 0.9; }
+  100% { transform: translate(-6px, 110vh); opacity: 0; }
+}

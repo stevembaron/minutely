@@ -1,4 +1,4 @@
-export type Condition = 'clear' | 'clearing' | 'drizzle' | 'rain';
+export type Condition = 'clear' | 'clearing' | 'drizzle' | 'rain' | 'flurries' | 'snow' | 'sleet';
 
 export interface MinuteForecast {
   minute: number;
@@ -37,7 +37,7 @@ export interface Settings {
 
 export type Screen = 'home' | 'settings' | 'locations' | 'admin';
 
-export type ScenarioKey = 'rain_clearing' | 'all_clear' | 'storm_incoming' | 'steady_rain' | 'drizzle';
+export type ScenarioKey = 'rain_clearing' | 'all_clear' | 'storm_incoming' | 'steady_rain' | 'drizzle' | 'snow_clearing' | 'snowstorm' | 'sleet_mix';
 
 export interface HourlyForecast {
   time: Date;

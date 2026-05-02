@@ -118,7 +118,7 @@ export function HomeScreen({
     return result;
   })();
 
-  const isWetCond = (c: MinuteForecast['condition']) => c === 'drizzle' || c === 'rain';
+  const isWetCond = (c: MinuteForecast['condition']) => c === 'drizzle' || c === 'rain' || c === 'flurries' || c === 'snow' || c === 'sleet';
   const isDryCond = (c: MinuteForecast['condition']) => c === 'clear' || c === 'clearing';
 
   const bestWindow = (() => {
@@ -145,12 +145,21 @@ export function HomeScreen({
     return res;
   })();
 
+  const condNoun = (c: MinuteForecast['condition']): string => {
+    if (c === 'rain')     return 'Rain';
+    if (c === 'drizzle')  return 'Drizzle';
+    if (c === 'snow')     return 'Snow';
+    if (c === 'flurries') return 'Flurries';
+    if (c === 'sleet')    return 'Sleet';
+    return 'Precipitation';
+  };
+
   const nextEvent = (() => {
     for (let i = nowMin + 1; i < 60; i++) {
       const cond = forecast[i].condition;
       if (isDryCond(current.condition) && isWetCond(cond)) {
         const mins = i - nowMin;
-        const label = cond === 'rain' ? 'Rain' : 'Drizzle';
+        const label = condNoun(cond);
         if (mins <= 5)  return `${label} arriving — head in soon`;
         if (mins <= 12) return `${label} in ${mins} min — wrap up outside`;
         return `${label} expected in ${mins} min`;
@@ -165,12 +174,23 @@ export function HomeScreen({
         if (mins <= 15) return `Clears in ${mins} min${winStr}`;
         return `Should clear in about ${mins} min${winStr}`;
       }
-      if (current.condition === 'drizzle' && cond === 'rain') return `Rain intensifying in ${i - nowMin} min`;
-      if (current.condition === 'rain' && cond === 'drizzle') return `Rain easing up in ${i - nowMin} min`;
+      if (current.condition === 'drizzle' && cond === 'rain')     return `Rain intensifying in ${i - nowMin} min`;
+      if (current.condition === 'rain'    && cond === 'drizzle')  return `Rain easing up in ${i - nowMin} min`;
+      if (current.condition === 'flurries' && cond === 'snow')    return `Snow intensifying in ${i - nowMin} min`;
+      if (current.condition === 'snow'     && cond === 'flurries') return `Snow easing up in ${i - nowMin} min`;
+      // Phase-change transitions (warmer / colder weather changing precip type)
+      if ((current.condition === 'rain' || current.condition === 'drizzle') && (cond === 'snow' || cond === 'flurries' || cond === 'sleet'))
+        return `Turning to ${condNoun(cond).toLowerCase()} in ${i - nowMin} min`;
+      if ((current.condition === 'snow' || current.condition === 'flurries') && (cond === 'rain' || cond === 'drizzle' || cond === 'sleet'))
+        return `Turning to ${condNoun(cond).toLowerCase()} in ${i - nowMin} min`;
     }
-    if (isDryCond(current.condition)) return 'Clear skies for the next hour';
-    if (current.condition === 'drizzle') return 'Light drizzle through the hour';
-    return 'Rain continues through the hour';
+    if (isDryCond(current.condition))      return 'Clear skies for the next hour';
+    if (current.condition === 'drizzle')   return 'Light drizzle through the hour';
+    if (current.condition === 'rain')      return 'Rain continues through the hour';
+    if (current.condition === 'flurries')  return 'Light flurries through the hour';
+    if (current.condition === 'snow')      return 'Snow continues through the hour';
+    if (current.condition === 'sleet')     return 'Sleet through the hour — slick surfaces';
+    return '';
   })();
 
   const handleTimelineInteract = useCallback((e: React.MouseEvent | React.TouchEvent) => {
@@ -213,15 +233,23 @@ export function HomeScreen({
     hourlyItems.push({ type: 'hour', data: h, index: i });
   }
 
-  const condLabelMap: Record<string, string> = { rain: 'Rain', drizzle: 'Drizzle', clearing: 'Clearing', clear: 'Clear' };
+  const condLabelMap: Record<string, string> = {
+    rain: 'Rain', drizzle: 'Drizzle', clearing: 'Clearing', clear: 'Clear',
+    snow: 'Snow', flurries: 'Flurries', sleet: 'Sleet',
+  };
   const baseDescMap: Record<string, string> = {
-    rain: 'Keep an umbrella handy', drizzle: 'Light mist in the air',
-    clearing: 'Skies brightening', clear: 'Great time to head out',
+    rain:     'Keep an umbrella handy',
+    drizzle:  'Light mist in the air',
+    clearing: 'Skies brightening',
+    clear:    'Great time to head out',
+    snow:     'Bundle up — accumulation likely',
+    flurries: 'Light snow in the air',
+    sleet:    'Slick surfaces — drive carefully',
   };
 
   const minsUntilWet = (() => {
     for (let i = nowMin + 1; i < 60; i++) {
-      if (forecast[i].condition === 'drizzle' || forecast[i].condition === 'rain') return i - nowMin;
+      if (isWetCond(forecast[i].condition)) return i - nowMin;
     }
     return null;
   })();
@@ -236,8 +264,10 @@ export function HomeScreen({
   const uvLabel = uvIndex <= 2 ? 'Low' : uvIndex <= 5 ? 'Mod' : uvIndex <= 7 ? 'High' : 'V.High';
   const isStale = lastUpdated != null && (Date.now() - lastUpdated.getTime()) > 25 * 60 * 1000;
   const windLabel = windBearing != null ? `${bearingToDir(windBearing)} ${displayWind}` : `${displayWind}`;
-  const isRaining = current.condition === 'rain' || current.condition === 'drizzle';
-  const dropCount = current.condition === 'rain' ? 22 : 13;
+  const isRaining  = current.condition === 'rain' || current.condition === 'drizzle' || current.condition === 'sleet';
+  const isSnowing  = current.condition === 'snow' || current.condition === 'flurries';
+  const dropCount  = current.condition === 'rain' ? 22 : current.condition === 'sleet' ? 16 : 13;
+  const flakeCount = current.condition === 'snow' ? 28 : 14;
 
   return (
     <div style={{
@@ -262,6 +292,26 @@ export function HomeScreen({
               animation: `rainDrop ${0.62 + (i % 9) * 0.08}s linear ${-(i * 0.31) % 2.1}s infinite`,
             }} />
           ))}
+        </div>
+      )}
+
+      {/* SNOW ANIMATION OVERLAY */}
+      {isSnowing && (
+        <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 0 }}>
+          {Array.from({ length: flakeCount }).map((_, i) => {
+            const sz = current.condition === 'snow' ? 2 + (i % 4) * 0.7 : 1.5 + (i % 3) * 0.6;
+            return (
+              <div key={i} style={{
+                position: 'absolute',
+                left: `${(i * 17 + 3) % 101}%`,
+                top: `-${5 + (i * 11) % 35}%`,
+                width: `${sz}px`, height: `${sz}px`, borderRadius: '50%',
+                background: `rgba(255,255,255,${darkMode ? 0.7 + (i % 4) * 0.07 : 0.8 + (i % 4) * 0.05})`,
+                boxShadow: darkMode ? '0 0 2px rgba(255,255,255,0.4)' : '0 0 1.5px rgba(120,150,190,0.35)',
+                animation: `snowFall ${4 + (i % 7) * 0.9}s linear ${-(i * 0.43) % 5}s infinite`,
+              }} />
+            );
+          })}
         </div>
       )}
 

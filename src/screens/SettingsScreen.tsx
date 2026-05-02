@@ -135,6 +135,10 @@ export function SettingsScreen({ onBack, settings, setSettings, onAdmin, onLocat
             { color: '#d4a017', label: 'Drizzle',    desc: 'Watch out' },
             { color: '#c94f2a', label: 'Rain',       desc: 'Bring an umbrella' },
             { color: '#b03020', label: 'Heavy rain', desc: 'Stay inside if you can' },
+            { color: '#9eb5cd', label: 'Flurries',   desc: 'Light snow falling' },
+            { color: '#6b8caf', label: 'Snow',       desc: 'Bundle up' },
+            { color: '#3d5d80', label: 'Heavy snow', desc: 'Accumulation likely' },
+            { color: '#8b7da8', label: 'Sleet',      desc: 'Slippery surfaces' },
           ].map(item => (
             <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 12, height: 12, borderRadius: 3, background: item.color, flexShrink: 0 }} />
