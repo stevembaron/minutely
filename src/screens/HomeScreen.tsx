@@ -209,43 +209,70 @@ export function HomeScreen({
     return 'Precipitation';
   };
 
-  const nextEvent = (() => {
+  // Forecast event for the hero. Always returns a primary headline plus,
+  // when meaningful, a secondary line giving the "when" or "how long".
+  // Same skeleton in every state — consistency is what builds trust.
+  type EventInfo = { primary: string; secondary?: string };
+  const nextEvent: EventInfo = (() => {
+    const remaining = 60 - nowMin;
     for (let i = nowMin + 1; i < 60; i++) {
       const cond = forecast[i].condition;
+      const mins = i - nowMin;
+      const startTime = timeLabel(mins);
+
+      // Dry → Wet transition
       if (isDryCond(current.condition) && isWetCond(cond)) {
-        const mins = i - nowMin;
         const label = condNoun(cond);
-        if (mins <= 5)  return `${label} arriving — head in soon`;
-        if (mins <= 12) return `${label} in ${mins} min — wrap up outside`;
-        return `${label} expected in ${mins} min`;
+        const primary = mins <= 5  ? `${label} arriving`
+                      : mins <= 12 ? `${label} in ${mins} min`
+                      :              `${label} in ${mins} min`;
+        return { primary, secondary: `Starts ${startTime}` };
       }
+
+      // Wet → Dry transition
       if (isWetCond(current.condition) && isDryCond(cond)) {
-        const mins = i - nowMin;
         let dryEnd = i;
         while (dryEnd < 60 && isDryCond(forecast[dryEnd].condition)) dryEnd++;
         const winLen = dryEnd - i;
-        const winStr = winLen < 60 - nowMin ? ` · ${winLen} min window` : '';
-        if (mins <= 5)  return `Clearing up any moment now${winStr}`;
-        if (mins <= 15) return `Clears in ${mins} min${winStr}`;
-        return `Should clear in about ${mins} min${winStr}`;
+        const isOpenEnded = dryEnd >= 60;
+        const primary = mins <= 5  ? 'Clearing any moment'
+                      : mins <= 15 ? `Clears in ${mins} min`
+                      :              `Clears in ~${mins} min`;
+        const secondary = isOpenEnded
+          ? 'Stays dry through the hour'
+          : `${winLen} min dry window after`;
+        return { primary, secondary };
       }
-      if (current.condition === 'drizzle' && cond === 'rain')     return `Rain intensifying in ${i - nowMin} min`;
-      if (current.condition === 'rain'    && cond === 'drizzle')  return `Rain easing up in ${i - nowMin} min`;
-      if (current.condition === 'flurries' && cond === 'snow')    return `Snow intensifying in ${i - nowMin} min`;
-      if (current.condition === 'snow'     && cond === 'flurries') return `Snow easing up in ${i - nowMin} min`;
-      // Phase-change transitions (warmer / colder weather changing precip type)
+
+      // Within-precip intensity / phase-change transitions
+      if (current.condition === 'drizzle' && cond === 'rain')
+        return { primary: `Rain picking up in ${mins} min`, secondary: `Heavier ${startTime}` };
+      if (current.condition === 'rain' && cond === 'drizzle')
+        return { primary: `Rain easing in ${mins} min`, secondary: `Lighter ${startTime}` };
+      if (current.condition === 'flurries' && cond === 'snow')
+        return { primary: `Snow picking up in ${mins} min`, secondary: `Heavier ${startTime}` };
+      if (current.condition === 'snow' && cond === 'flurries')
+        return { primary: `Snow easing in ${mins} min`, secondary: `Lighter ${startTime}` };
       if ((current.condition === 'rain' || current.condition === 'drizzle') && (cond === 'snow' || cond === 'flurries' || cond === 'sleet'))
-        return `Turning to ${condNoun(cond).toLowerCase()} in ${i - nowMin} min`;
+        return { primary: `Turning to ${condNoun(cond).toLowerCase()} in ${mins} min`, secondary: `Around ${startTime}` };
       if ((current.condition === 'snow' || current.condition === 'flurries') && (cond === 'rain' || cond === 'drizzle' || cond === 'sleet'))
-        return `Turning to ${condNoun(cond).toLowerCase()} in ${i - nowMin} min`;
+        return { primary: `Turning to ${condNoun(cond).toLowerCase()} in ${mins} min`, secondary: `Around ${startTime}` };
     }
-    if (isDryCond(current.condition))      return 'Clear skies for the next hour';
-    if (current.condition === 'drizzle')   return 'Light drizzle through the hour';
-    if (current.condition === 'rain')      return 'Rain continues through the hour';
-    if (current.condition === 'flurries')  return 'Light flurries through the hour';
-    if (current.condition === 'snow')      return 'Snow continues through the hour';
-    if (current.condition === 'sleet')     return 'Sleet through the hour — slick surfaces';
-    return '';
+
+    // No transition in the visible window: flat conditions.
+    if (isDryCond(current.condition))
+      return { primary: `Clear for the next ${remaining} min`, secondary: 'No precipitation expected' };
+    if (current.condition === 'drizzle')
+      return { primary: `Drizzle for the next ${remaining} min`, secondary: 'No dry break in the next hour' };
+    if (current.condition === 'rain')
+      return { primary: `Rain for the next ${remaining} min`, secondary: 'No dry break in the next hour' };
+    if (current.condition === 'flurries')
+      return { primary: `Flurries for the next ${remaining} min`, secondary: 'No dry break in the next hour' };
+    if (current.condition === 'snow')
+      return { primary: `Snow for the next ${remaining} min`, secondary: 'No dry break in the next hour' };
+    if (current.condition === 'sleet')
+      return { primary: `Sleet for the next ${remaining} min`, secondary: 'Slick surfaces — drive carefully' };
+    return { primary: '' };
   })();
 
   const lastInteractMin = useRef<number | null>(null);
@@ -555,14 +582,28 @@ export function HomeScreen({
 
             <div style={{
               fontSize: 32, fontWeight: 600, color: t.text1,
-              letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: 10,
+              letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: nextEvent.secondary ? 4 : 10,
             }}>
-              {nextEvent}
+              {nextEvent.primary}
             </div>
+
+            {nextEvent.secondary && (
+              <div style={{ fontSize: 14, fontWeight: 500, color: t.text3, marginBottom: 12 }}>
+                {nextEvent.secondary}
+              </div>
+            )}
 
             <div style={{ fontSize: 17, fontWeight: 600, color: t.text2, letterSpacing: '-0.01em' }}>
               <span style={{ color: t.text1, fontWeight: 700 }}>{displayTemp}{tempUnit}</span>
-              <span style={{ fontWeight: 500, color: t.text3 }}> · feels {displayFeels}° · {humidity}%</span>
+              {Math.abs(displayFeels - displayTemp) >= 5 ? (
+                <>
+                  <span style={{ fontWeight: 500, color: t.text3 }}> · </span>
+                  <span style={{ color: t.text1, fontWeight: 700 }}>feels {displayFeels}°</span>
+                  <span style={{ fontWeight: 500, color: t.text3 }}> · {humidity}%</span>
+                </>
+              ) : (
+                <span style={{ fontWeight: 500, color: t.text3 }}> · feels {displayFeels}° · {humidity}%</span>
+              )}
             </div>
 
             <div style={{ fontSize: 13, fontWeight: 500, color: t.text3, marginTop: 4, display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
