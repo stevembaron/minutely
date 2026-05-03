@@ -83,7 +83,27 @@ export function HomeScreen({
 }: Props) {
   const [expandedAlertIdx, setExpandedAlertIdx] = useState<number | null>(null);
   const current = forecast[nowMin];
-  const cs = getStyle(current.condition, current.precip);
+  // "Effective" condition: whatever dominates the next 30 minutes. Smooths
+  // out 1–2 minute transitional artifacts (e.g. a single "clearing" minute
+  // followed by 59 "clear" minutes) so the hero badge, icon, theming and
+  // animation match what the user actually experiences. The literal
+  // current.condition is still used by minute-by-minute UI like the
+  // forecast bars and the "What to expect" chunks.
+  const effectiveCondition = (() => {
+    const lookahead = Math.min(30, 60 - nowMin);
+    const counts = new Map<MinuteForecast['condition'], number>();
+    for (let i = nowMin; i < nowMin + lookahead; i++) {
+      const c = forecast[i].condition;
+      counts.set(c, (counts.get(c) ?? 0) + 1);
+    }
+    let best = current.condition;
+    let bestCount = counts.get(best) ?? 0;
+    for (const [c, n] of counts) {
+      if (n > bestCount) { best = c; bestCount = n; }
+    }
+    return best;
+  })();
+  const cs = getStyle(effectiveCondition, current.precip);
   const timelineRef = useRef<HTMLDivElement>(null);
   const [hoveredMin, setHoveredMin] = useState<number | null>(null);
   const [leaveMin, setLeaveMin] = useState<number | null>(null);
@@ -198,6 +218,11 @@ export function HomeScreen({
       const len = phase.end - phase.start + 1;
       if (len < 4) continue;
       if (phase.start - lastLabelMin < 7) continue;
+      // Too close to "now": label gets clipped by the timeline's left edge.
+      // The currentSegment / bestWindow labels already cover this region.
+      if (phase.start - nowMin < 4) continue;
+      // Too close to the right edge: same clipping problem on the right.
+      if (60 - phase.start < 3) continue;
       res.push({ minute: phase.start, toCondition: phase.condition });
       lastLabelMin = phase.start;
       if (res.length >= 5) break;
@@ -427,10 +452,10 @@ export function HomeScreen({
   const pressureSubLabel = pressureTrend
     ? `${pressureTrend.direction === 'steady' ? 'Steady' : pressureTrend.direction}${pressureTrend.rate === 'fast' ? ' fast' : ''}`
     : pressureUnit;
-  const isRaining  = current.condition === 'rain' || current.condition === 'drizzle' || current.condition === 'sleet';
-  const isSnowing  = current.condition === 'snow' || current.condition === 'flurries';
-  const dropCount  = current.condition === 'rain' ? 22 : current.condition === 'sleet' ? 16 : 13;
-  const flakeCount = current.condition === 'snow' ? 28 : 14;
+  const isRaining  = effectiveCondition === 'rain' || effectiveCondition === 'drizzle' || effectiveCondition === 'sleet';
+  const isSnowing  = effectiveCondition === 'snow' || effectiveCondition === 'flurries';
+  const dropCount  = effectiveCondition === 'rain' ? 22 : effectiveCondition === 'sleet' ? 16 : 13;
+  const flakeCount = effectiveCondition === 'snow' ? 28 : 14;
 
   return (
     <div style={{
@@ -617,7 +642,7 @@ export function HomeScreen({
               background: darkMode ? cs.accent + '28' : cs.accent + '22', borderRadius: 7,
               padding: '5px 11px 5px 9px', marginBottom: 12, transition: 'background 0.8s',
             }}>
-              <CondIcon condition={current.condition} size={14} color={cs.accent} />
+              <CondIcon condition={effectiveCondition} size={14} color={cs.accent} />
               <span style={{ fontSize: 12, fontWeight: 700, color: t.condText, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{cs.label}</span>
             </div>
 
@@ -677,7 +702,7 @@ export function HomeScreen({
               </svg>
             </button>
             <div style={{ opacity: 0.85 }}>
-              <CondIcon condition={current.condition} size={48} color={cs.accent} />
+              <CondIcon condition={effectiveCondition} size={48} color={cs.accent} />
             </div>
           </div>
         </div>
