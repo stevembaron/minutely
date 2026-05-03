@@ -378,14 +378,18 @@ export function HomeScreen({
   const showStorm = stormDist != null && stormDist < 30 && stormBear != null;
   const stormDir = stormBear != null ? bearingToDir(stormBear) : '';
 
-  // ── Pressure label
+  // ── Pressure label. inHg in imperial, hPa/mb elsewhere.
   const pressureArrow = pressureTrend?.direction === 'rising' ? '↑'
                        : pressureTrend?.direction === 'falling' ? '↓'
                        : pressureTrend?.direction === 'steady' ? '→' : '';
-  const pressureValue = pressureMb != null ? `${pressureArrow}${pressureMb}` : '—';
+  const pressureFormatted = pressureMb != null
+    ? (useKph ? `${pressureMb}` : (pressureMb / 33.8639).toFixed(2))
+    : null;
+  const pressureUnit = useKph ? 'mb' : 'inHg';
+  const pressureValue = pressureFormatted != null ? `${pressureArrow}${pressureFormatted}` : '—';
   const pressureSubLabel = pressureTrend
     ? `${pressureTrend.direction === 'steady' ? 'Steady' : pressureTrend.direction}${pressureTrend.rate === 'fast' ? ' fast' : ''}`
-    : 'mb';
+    : pressureUnit;
   const isRaining  = current.condition === 'rain' || current.condition === 'drizzle' || current.condition === 'sleet';
   const isSnowing  = current.condition === 'snow' || current.condition === 'flurries';
   const dropCount  = current.condition === 'rain' ? 22 : current.condition === 'sleet' ? 16 : 13;
