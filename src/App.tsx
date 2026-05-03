@@ -4,7 +4,7 @@ import { HomeScreen } from './screens/HomeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { LocationScreen } from './screens/LocationScreen';
 import { AdminScreen } from './screens/AdminScreen';
-import { buildForecast, fetchLiveData, fetchYesterdayTemp } from './weather';
+import { buildForecast, fetchLiveData, fetchYesterdayTemp, reverseGeocode } from './weather';
 import { evaluateAlerts } from './notifications';
 import { WelcomeScreen } from './screens/WelcomeScreen';
 import type { Screen, ScenarioKey, Settings, MinuteForecast, CurrentConditions, HourlyForecast, WeatherAlert } from './types';
@@ -61,6 +61,19 @@ export default function App() {
   useEffect(() => { save('soon-location', location); }, [location]);
   useEffect(() => { save('soon-coords', locationCoords); }, [locationCoords]);
   useEffect(() => { save('soon-onboarded', onboarded); }, [onboarded]);
+
+  // When the user opts into geolocation, the placeholder name is "My Location".
+  // Reverse-geocode it to a real "City, State" string in the background so
+  // the hero reads as a real place instead of a generic label.
+  useEffect(() => {
+    if (location !== 'My Location' || !locationCoords) return;
+    let cancelled = false;
+    reverseGeocode(locationCoords.lat, locationCoords.lng).then(name => {
+      if (cancelled || !name) return;
+      setLocation(name);
+    });
+    return () => { cancelled = true; };
+  }, [location, locationCoords]);
 
   // Advance the "now" indicator every 30s based on real elapsed time
   // since the last fetch. Without this, the timeline visibly stales out

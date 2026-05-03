@@ -329,6 +329,26 @@ export async function searchLocations(query: string): Promise<GeoResult[]> {
   }
 }
 
+// Reverse geocoding — turn raw lat/lng into a human "City, State" string
+// so the auto-detected location reads as "Brooklyn, NY" instead of the
+// generic "My Location". CORS-enabled, no API key required.
+export async function reverseGeocode(lat: number, lng: number): Promise<string | null> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1&accept-language=en`;
+    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const a = data.address ?? {};
+    const city = a.city ?? a.town ?? a.village ?? a.municipality ?? a.suburb ?? a.county;
+    const state = a.state ?? a.region ?? a.country;
+    if (!city) return null;
+    return state ? `${city}, ${state}` : city;
+  } catch (err) {
+    console.error('Reverse geocode error:', err);
+    return null;
+  }
+}
+
 interface NominatimResult {
   lat: string;
   lon: string;

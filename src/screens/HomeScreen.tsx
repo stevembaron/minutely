@@ -176,11 +176,31 @@ export function HomeScreen({
     return null;
   })();
 
+  // Phase-grouped transitions for the timeline labels. A "transition" only
+  // gets a label if the new phase is at least 4 minutes long AND it's at
+  // least 7 minutes since the last label — otherwise rapid-fire conditions
+  // (like a sleet/snow/flurries mix) stack labels into illegible mush.
+  // Cap at 5 visible labels so the chart breathes regardless.
   const transitions = (() => {
+    type Phase = { start: number; end: number; condition: MinuteForecast['condition'] };
+    const phases: Phase[] = [];
+    let i = nowMin;
+    while (i < 60) {
+      const cond = forecast[i].condition;
+      const start = i;
+      while (i < 60 && forecast[i].condition === cond) i++;
+      phases.push({ start, end: i - 1, condition: cond });
+    }
     const res: { minute: number; toCondition: MinuteForecast['condition'] }[] = [];
-    for (let i = nowMin + 1; i < 60; i++) {
-      if (forecast[i].condition !== forecast[i - 1].condition)
-        res.push({ minute: i, toCondition: forecast[i].condition });
+    let lastLabelMin = nowMin - 100;
+    for (let p = 1; p < phases.length; p++) {
+      const phase = phases[p];
+      const len = phase.end - phase.start + 1;
+      if (len < 4) continue;
+      if (phase.start - lastLabelMin < 7) continue;
+      res.push({ minute: phase.start, toCondition: phase.condition });
+      lastLabelMin = phase.start;
+      if (res.length >= 5) break;
     }
     return res;
   })();
@@ -260,18 +280,35 @@ export function HomeScreen({
     }
 
     // No transition in the visible window: flat conditions.
+    // If sunrise or sunset is imminent (≤90 min), use that as the secondary
+    // line — much more useful than "no precipitation expected", since it
+    // tells the user when they'll lose / regain daylight.
+    const sunHint = (() => {
+      const now = Date.now();
+      const candidates: { time: Date; label: string }[] = [];
+      if (sunriseTime && sunriseTime.getTime() > now) candidates.push({ time: sunriseTime, label: 'Sunrise' });
+      if (sunsetTime  && sunsetTime.getTime()  > now) candidates.push({ time: sunsetTime,  label: 'Sunset'  });
+      if (candidates.length === 0) return null;
+      candidates.sort((a, b) => a.time.getTime() - b.time.getTime());
+      const next = candidates[0];
+      const mins = Math.round((next.time.getTime() - now) / 60000);
+      if (mins < 0 || mins > 90) return null;
+      const timeStr = next.time.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      return `${next.label} ${timeStr} · in ${mins} min`;
+    })();
+
     if (isDryCond(current.condition))
-      return { primary: `Clear for the next ${remaining} min`, secondary: 'No precipitation expected' };
+      return { primary: `Clear for the next ${remaining} min`, secondary: sunHint ?? 'No precipitation expected' };
     if (current.condition === 'drizzle')
-      return { primary: `Drizzle for the next ${remaining} min`, secondary: 'No dry break in the next hour' };
+      return { primary: `Drizzle for the next ${remaining} min`, secondary: sunHint ?? 'No dry break in the next hour' };
     if (current.condition === 'rain')
-      return { primary: `Rain for the next ${remaining} min`, secondary: 'No dry break in the next hour' };
+      return { primary: `Rain for the next ${remaining} min`, secondary: sunHint ?? 'No dry break in the next hour' };
     if (current.condition === 'flurries')
-      return { primary: `Flurries for the next ${remaining} min`, secondary: 'No dry break in the next hour' };
+      return { primary: `Flurries for the next ${remaining} min`, secondary: sunHint ?? 'No dry break in the next hour' };
     if (current.condition === 'snow')
-      return { primary: `Snow for the next ${remaining} min`, secondary: 'No dry break in the next hour' };
+      return { primary: `Snow for the next ${remaining} min`, secondary: sunHint ?? 'No dry break in the next hour' };
     if (current.condition === 'sleet')
-      return { primary: `Sleet for the next ${remaining} min`, secondary: 'Slick surfaces — drive carefully' };
+      return { primary: `Sleet for the next ${remaining} min`, secondary: sunHint ?? 'Slick surfaces — drive carefully' };
     return { primary: '' };
   })();
 
