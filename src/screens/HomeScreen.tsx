@@ -217,7 +217,7 @@ export function HomeScreen({
       const phase = phases[p];
       const len = phase.end - phase.start + 1;
       if (len < 4) continue;
-      if (phase.start - lastLabelMin < 7) continue;
+      if (phase.start - lastLabelMin < 12) continue;
       // Too close to "now": label gets clipped by the timeline's left edge.
       // The currentSegment / bestWindow labels already cover this region.
       if (phase.start - nowMin < 4) continue;
@@ -225,7 +225,7 @@ export function HomeScreen({
       if (60 - phase.start < 3) continue;
       res.push({ minute: phase.start, toCondition: phase.condition });
       lastLabelMin = phase.start;
-      if (res.length >= 5) break;
+      if (res.length >= 3) break;
     }
     return res;
   })();
