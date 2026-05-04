@@ -967,11 +967,19 @@ export function HomeScreen({
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 7, padding: '0 1px' }}>
-          {[0, 15, 30, 45, 60].map(tick => (
-            <span key={tick} style={{ fontSize: 11, fontWeight: 500, color: t.text3, fontFamily: 'monospace' }}>
-              {tick === 0 ? 'now' : `+${tick}m`}
-            </span>
-          ))}
+          {[0, 15, 30, 45, 60].map(tick => {
+            const base = lastUpdated ?? new Date();
+            const d = new Date(base.getTime() + tick * 60_000);
+            const h = d.getHours() % 12 || 12;
+            const m = d.getMinutes();
+            const label = `${h}:${m.toString().padStart(2, '0')}`;
+            const isPast = tick < nowMin;
+            return (
+              <span key={tick} style={{ fontSize: 11, fontWeight: 500, color: t.text3, fontFamily: 'monospace', opacity: isPast ? 0.45 : 1 }}>
+                {label}
+              </span>
+            );
+          })}
         </div>
       </div>
 
@@ -1079,6 +1087,9 @@ export function HomeScreen({
                           <div style={{ height: '100%', width: `${Math.round(barPct * 100)}%`, background: hs.barColor, opacity: 0.85, borderRadius: '0 2px 2px 0' }} />
                         )}
                       </div>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: hs.barColor, padding: '3px 0 5px', textAlign: 'center', minHeight: 18, opacity: h.precipProb >= 15 ? 1 : 0 }}>
+                        {h.precipProb >= 15 ? `${h.precipProb}%` : ''}
+                      </div>
                     </div>
                   );
                 })}
@@ -1119,13 +1130,20 @@ export function HomeScreen({
             </div>
             <div style={{ height: 1, background: t.divider, margin: '4px 0' }} />
             {(() => {
+              // Dew point from Magnus approximation (temp °F + humidity → °F or °C)
+              const tempC = (current.temp - 32) * 5 / 9;
+              const dewC  = tempC - (100 - humidity) / 5;
+              const dewDisplay = useCelsius ? Math.round(dewC) : Math.round(dewC * 9 / 5 + 32);
+              const hasGusts = windGustMph != null && windGustMph > windMph + 3;
               const stats = [
-                { label: 'Wind',  value: `${windLabel}`,        sub: displayWindUnit },
-                { label: 'Humid', value: `${humidity}%`,        sub: '' },
-                { label: 'UV',    value: `${uvIndex}`,          sub: uvLabel },
-                { label: 'Gusts', value: displayGust != null ? `${displayGust}` : '—', sub: displayGust != null ? displayWindUnit : '' },
-                { label: 'Press', value: pressureValue,         sub: pressureSubLabel },
-                { label: 'Vis',   value: displayVis,            sub: '' },
+                { label: 'Wind',   value: `${windLabel}`,        sub: displayWindUnit },
+                { label: 'Humid',  value: `${humidity}%`,        sub: '' },
+                { label: 'UV',     value: `${uvIndex}`,          sub: uvLabel },
+                { label: hasGusts ? 'Gusts' : 'Dew Pt',
+                  value: hasGusts ? `${displayGust}` : `${dewDisplay}°`,
+                  sub:   hasGusts ? displayWindUnit : settings.tempUnit },
+                { label: 'Press',  value: pressureValue,         sub: pressureSubLabel },
+                { label: 'Vis',    value: displayVis,            sub: '' },
               ];
               return (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', padding: '14px 0 16px' }}>
