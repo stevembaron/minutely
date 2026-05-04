@@ -198,9 +198,10 @@ export function HomeScreen({
 
   // Phase-grouped transitions for the timeline labels. A "transition" only
   // gets a label if the new phase is at least 4 minutes long AND it's at
-  // least 7 minutes since the last label — otherwise rapid-fire conditions
+  // least 12 minutes since the last label — otherwise rapid-fire conditions
   // (like a sleet/snow/flurries mix) stack labels into illegible mush.
-  // Cap at 5 visible labels so the chart breathes regardless.
+  // Also skip positions that would overlap the currentSegment or bestWindow
+  // labels, which are centered over their respective segments. Cap at 3.
   const transitions = (() => {
     type Phase = { start: number; end: number; condition: MinuteForecast['condition'] };
     const phases: Phase[] = [];
@@ -211,6 +212,21 @@ export function HomeScreen({
       while (i < 60 && forecast[i].condition === cond) i++;
       phases.push({ start, end: i - 1, condition: cond });
     }
+
+    // Collect label centers from other overlaid labels so we can exclude
+    // transitions that would land on top of them.
+    // currentSegment label is centered over phases[0]; bestWindow label is
+    // centered over bestWindow. Use generous clearance (~10 min) because
+    // currentSegment labels are wider ("RAIN · 5M" etc).
+    const occupiedCenters: number[] = [];
+    if (phases.length > 0) {
+      occupiedCenters.push((phases[0].start + phases[0].end) / 2);
+    }
+    if (bestWindow) {
+      occupiedCenters.push((bestWindow.start + bestWindow.end) / 2);
+    }
+    const CLEAR_MIN = 10; // minutes of clearance from other label centers
+
     const res: { minute: number; toCondition: MinuteForecast['condition'] }[] = [];
     let lastLabelMin = nowMin - 100;
     for (let p = 1; p < phases.length; p++) {
@@ -218,13 +234,12 @@ export function HomeScreen({
       const len = phase.end - phase.start + 1;
       if (len < 4) continue;
       if (phase.start - lastLabelMin < 12) continue;
-      // Too close to "now": label gets clipped by the timeline's left edge.
-      // The currentSegment / bestWindow labels already cover this region.
       if (phase.start - nowMin < 4) continue;
-      // Too close to the right edge: same clipping problem on the right.
       if (60 - phase.start < 3) continue;
+      if (occupiedCenters.some(c => Math.abs(phase.start - c) < CLEAR_MIN)) continue;
       res.push({ minute: phase.start, toCondition: phase.condition });
       lastLabelMin = phase.start;
+      occupiedCenters.push(phase.start);
       if (res.length >= 3) break;
     }
     return res;
