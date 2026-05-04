@@ -439,6 +439,19 @@ export function HomeScreen({
   // ── Storm tracker — only show when reasonably close
   const showStorm = stormDist != null && stormDist < 30 && stormBear != null;
   const stormDir = stormBear != null ? bearingToDir(stormBear) : '';
+  // Infer approach by comparing wind direction to storm bearing.
+  // Wind bearing = direction wind is coming FROM; storm bearing = direction TO storm.
+  // If they're within ~60° the wind is blowing from the storm toward us → approaching.
+  // If ~180° apart the storm is downwind → moving away.
+  const stormMovement = (() => {
+    if (stormBear == null || windBearing == null) return null;
+    const windFrom = windBearing; // direction wind comes FROM
+    const diff = Math.abs(((stormBear - windFrom + 540) % 360) - 180);
+    // diff near 0°: storm is upwind (approaching); near 180°: storm is downwind (moving away)
+    if (diff < 60) return 'approaching';
+    if (diff > 120) return 'moving away';
+    return 'nearby';
+  })();
 
   // ── Pressure label. inHg in imperial, hPa/mb elsewhere.
   const pressureArrow = pressureTrend?.direction === 'rising' ? '↑'
@@ -741,7 +754,9 @@ export function HomeScreen({
                 Storm {displayStormDist} {stormDir}
               </div>
               <div style={{ fontSize: 12, fontWeight: 500, color: t.text3, marginTop: 1 }}>
-                Nearest active storm cell
+                {stormMovement === 'approaching' ? 'Approaching from the ' + stormDir
+                  : stormMovement === 'moving away' ? 'Moving away to the ' + stormDir
+                  : 'Active storm cell to the ' + stormDir}
               </div>
             </div>
           </div>
