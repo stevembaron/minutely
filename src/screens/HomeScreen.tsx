@@ -196,6 +196,55 @@ export function HomeScreen({
     return null;
   })();
 
+  // Look up the next hour in the 24h forecast that flips wet/dry.
+  // We use these to extend the hero's secondary line beyond the 60-min
+  // window ("Stays dry through 6pm" instead of just "stays dry").
+  const isHourWet = (h: HourlyForecast) => h.precipProb >= 40 || isWetCond(h.condition);
+  const nextWetHourTime: Date | null = (() => {
+    for (const h of hourlyForecast) {
+      if (h.time.getTime() <= Date.now() - 30 * 60_000) continue;
+      if (isHourWet(h)) return h.time;
+    }
+    return null;
+  })();
+  const nextDryHourTime: Date | null = (() => {
+    for (const h of hourlyForecast) {
+      if (h.time.getTime() <= Date.now() - 30 * 60_000) continue;
+      if (!isHourWet(h)) return h.time;
+    }
+    return null;
+  })();
+
+  // Outdoor windows: runs of dry hours in the next ~12h, used to surface
+  // 2-3 upcoming opportunities to be outside (run, dog walk, errand).
+  // The first window's start is clamped to "now" if we're already in it.
+  const outdoorWindows = (() => {
+    type Window = { start: Date; end: Date; durationMin: number };
+    const windows: Window[] = [];
+    if (!hourlyForecast.length) return windows;
+    const horizon = Math.min(14, hourlyForecast.length);
+    let i = 0;
+    while (i < horizon) {
+      if (isHourWet(hourlyForecast[i])) { i++; continue; }
+      const startIdx = i;
+      while (i < horizon && !isHourWet(hourlyForecast[i])) i++;
+      let start = hourlyForecast[startIdx].time;
+      const now = new Date();
+      // If the window already started, anchor it to "now"
+      if (start.getTime() < now.getTime()) start = now;
+      const end = i < hourlyForecast.length
+        ? hourlyForecast[i].time
+        : new Date(hourlyForecast[i - 1].time.getTime() + 3_600_000);
+      const durationMin = Math.round((end.getTime() - start.getTime()) / 60_000);
+      // Only show windows of at least 60 min — anything shorter isn't a
+      // meaningful planning slot
+      if (durationMin >= 60 && end.getTime() > now.getTime()) {
+        windows.push({ start, end, durationMin });
+      }
+    }
+    return windows.slice(0, 3);
+  })();
+
   // Phase-grouped transitions for the timeline labels. A "transition" only
   // gets a label if the new phase is at least 4 minutes long AND it's at
   // least 12 minutes since the last label — otherwise rapid-fire conditions
@@ -299,7 +348,9 @@ export function HomeScreen({
                       : mins <= 15 ? `Clears in ${mins} min`
                       :              `Clears in ~${mins} min`;
         const secondary = isOpenEnded
-          ? 'Stays dry through the hour'
+          ? (nextWetHourTime
+              ? `Then dry until ~${shortTime(nextWetHourTime)}`
+              : 'Stays dry through the hour')
           : `${winLen} min dry window after`;
         return { primary, secondary };
       }
@@ -337,16 +388,21 @@ export function HomeScreen({
       return `${next.label} ${timeStr} · in ${mins} min`;
     })();
 
+    // For "no transition" states, prefer the sunrise/sunset hint, then a
+    // wider hourly-forecast outlook ("Rain expected ~4pm" / "Easing ~6pm")
+    // before falling back to the generic line.
+    const wetOutlook = nextDryHourTime ? `Easing around ${shortTime(nextDryHourTime)}` : 'No dry break in the next hour';
+    const dryOutlook = nextWetHourTime ? `Rain expected ${shortTime(nextWetHourTime)}` : 'No rain in the forecast';
     if (isDryCond(current.condition))
-      return { primary: `Clear for the next ${remaining} min`, secondary: sunHint ?? 'No precipitation expected' };
+      return { primary: `Clear for the next ${remaining} min`, secondary: sunHint ?? dryOutlook };
     if (current.condition === 'drizzle')
-      return { primary: `Drizzle for the next ${remaining} min`, secondary: sunHint ?? 'No dry break in the next hour' };
+      return { primary: `Drizzle for the next ${remaining} min`, secondary: sunHint ?? wetOutlook };
     if (current.condition === 'rain')
-      return { primary: `Rain for the next ${remaining} min`, secondary: sunHint ?? 'No dry break in the next hour' };
+      return { primary: `Rain for the next ${remaining} min`, secondary: sunHint ?? wetOutlook };
     if (current.condition === 'flurries')
-      return { primary: `Flurries for the next ${remaining} min`, secondary: sunHint ?? 'No dry break in the next hour' };
+      return { primary: `Flurries for the next ${remaining} min`, secondary: sunHint ?? wetOutlook };
     if (current.condition === 'snow')
-      return { primary: `Snow for the next ${remaining} min`, secondary: sunHint ?? 'No dry break in the next hour' };
+      return { primary: `Snow for the next ${remaining} min`, secondary: sunHint ?? wetOutlook };
     if (current.condition === 'sleet')
       return { primary: `Sleet for the next ${remaining} min`, secondary: sunHint ?? 'Slick surfaces — drive carefully' };
     return { primary: '' };
@@ -1025,6 +1081,45 @@ export function HomeScreen({
 
       {/* LOWER SECTION (now part of single page scroll) */}
       <div style={{ paddingBottom: 'var(--bottom-safe)', marginTop: 18 }}>
+
+        {/* OUTDOOR WINDOWS — runs of dry hours over the next ~12h */}
+        {outdoorWindows.length > 0 && (
+          <div style={{ margin: '0 22px 18px' }}>
+            <div style={{ fontSize: 12, color: t.text3, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>
+              Outdoor windows
+            </div>
+            <div style={{
+              background: t.card, borderRadius: 14,
+              border: `1.5px solid ${t.cardBorder}`,
+              overflow: 'hidden',
+            }}>
+              {outdoorWindows.map((w, idx) => {
+                const isNow = w.start.getTime() < Date.now() + 60_000;
+                const startStr = isNow ? 'Now' : shortTime(w.start);
+                const endStr = shortTime(w.end);
+                const hours = Math.floor(w.durationMin / 60);
+                const minsRem = w.durationMin % 60;
+                const durationStr = hours === 0 ? `${minsRem} min`
+                  : minsRem === 0 ? `${hours} hr${hours > 1 ? 's' : ''}`
+                  : `${hours}h ${minsRem}m`;
+                return (
+                  <div key={idx} style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                    borderTop: idx > 0 ? `1px solid ${t.dividerSoft}` : 'none',
+                  }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3d9e5f', flexShrink: 0 }} />
+                    <div style={{ fontSize: 14, fontWeight: 700, color: t.text1 }}>
+                      {startStr} → {endStr}
+                    </div>
+                    <div style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 500, color: t.text3 }}>
+                      {durationStr}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* HOURLY FORECAST */}
         {hourlyForecast.length > 0 && (
