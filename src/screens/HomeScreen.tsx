@@ -55,7 +55,7 @@ function shortTime(d: Date): string {
 }
 
 function bearingToDir(deg: number): string {
-  return ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'][Math.round(deg / 45) % 8];
+  return ['North', 'Northeast', 'East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest'][Math.round(deg / 45) % 8];
 }
 
 function timeOfDayBackground(bg: string, bgDark: string, isDark: boolean): string {
