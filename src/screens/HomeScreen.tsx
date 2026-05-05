@@ -481,7 +481,7 @@ export function HomeScreen({
     ? (pressureTrend.direction === 'steady'
         ? 'Steady'
         : `${pressureTrend.direction === 'rising' ? 'Rising' : 'Falling'}${pressureTrend.rate === 'fast' ? ' fast' : ''}`)
-    : 'Pressure';
+    : '';
   const isRaining  = effectiveCondition === 'rain' || effectiveCondition === 'drizzle' || effectiveCondition === 'sleet';
   const isSnowing  = effectiveCondition === 'snow' || effectiveCondition === 'flurries';
   const dropCount  = effectiveCondition === 'rain' ? 22 : effectiveCondition === 'sleet' ? 16 : 13;
