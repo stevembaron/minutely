@@ -223,7 +223,11 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
         const mmPerHour = m.precipIntensity ?? 0;
         // Minutely points often lack precipType; inherit current's type as a sensible fallback
         const ptype = m.precipType ?? currentPrecipType;
-        const condition = i === 0 ? currentCondition : intensityToCondition(mmPerHour, ptype);
+        let condition = i === 0 ? currentCondition : intensityToCondition(mmPerHour, ptype);
+        // Minute-level data tracks precip but not cloud cover. If we're
+        // currently dry-but-cloudy ('clearing'), keep that for subsequent
+        // dry minutes so the chart doesn't flip to 'clear' a minute later.
+        if (i > 0 && condition === 'clear' && currentCondition === 'clearing') condition = 'clearing';
         return { minute: i, precip: Math.max(mmToIntensity(mmPerHour), i === 0 ? mmToIntensity(currentPrecip) : 0), condition, temp: currentTempF + i * 0.05 };
       });
     } else if (data.hourly?.data && data.hourly.data.length >= 2) {
