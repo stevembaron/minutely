@@ -550,20 +550,23 @@ export function HomeScreen({
     return 'nearby';
   })();
 
-  // ── Pressure: qualitative label + trend arrow. Pirate Weather returns
-  // sea-level hPa so no altitude correction needed.
-  const pressureQual = pressureMb == null ? null
-    : pressureMb < 1000 ? 'Low'
-    : pressureMb > 1022 ? 'High'
-    : 'Stable';
+  // ── Pressure: only show the Low/High descriptor when extreme (the
+  // mid-range case is the boring/default — the trend is what's actionable).
+  // Pirate Weather returns sea-level hPa so no altitude correction needed.
   const pressureArrow = pressureTrend?.direction === 'rising'  ? ' ↑'
                       : pressureTrend?.direction === 'falling' ? ' ↓' : '';
-  const pressureValue = pressureQual != null ? `${pressureQual}${pressureArrow}` : '—';
-  const pressureSubLabel = pressureTrend
+  const trendWord = pressureTrend
     ? (pressureTrend.direction === 'steady'
         ? 'Steady'
         : `${pressureTrend.direction === 'rising' ? 'Rising' : 'Falling'}${pressureTrend.rate === 'fast' ? ' fast' : ''}`)
-    : '';
+    : null;
+  const isLow  = pressureMb != null && pressureMb < 1000;
+  const isHigh = pressureMb != null && pressureMb > 1022;
+  const isExtremePressure = isLow || isHigh;
+  const pressureValue = pressureMb == null ? '—'
+    : isExtremePressure ? `${isLow ? 'Low' : 'High'}${pressureArrow}`
+    : (trendWord ?? '—');
+  const pressureSubLabel = isExtremePressure && trendWord ? trendWord : '';
   const isRaining  = effectiveCondition === 'rain' || effectiveCondition === 'drizzle' || effectiveCondition === 'sleet';
   const isSnowing  = effectiveCondition === 'snow' || effectiveCondition === 'flurries';
   const dropCount  = effectiveCondition === 'rain' ? 22 : effectiveCondition === 'sleet' ? 16 : 13;
