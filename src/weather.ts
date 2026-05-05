@@ -210,6 +210,7 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
       // units=ca returns nearestStormDistance in km; convert to miles for internal storage
       nearestStormDistance: c.nearestStormDistance != null ? Math.round(kmToMiles(c.nearestStormDistance)) : undefined,
       nearestStormBearing:  c.nearestStormBearing  != null ? Math.round(c.nearestStormBearing)  : undefined,
+      icon: currentIcon || undefined,
     };
 
     const sunriseTime = daily0.sunriseTime ? new Date(daily0.sunriseTime * 1000) : undefined;

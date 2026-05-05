@@ -20,6 +20,10 @@ export interface CurrentConditions {
   pressure?: number;    // hPa (mb)
   nearestStormDistance?: number; // miles
   nearestStormBearing?: number;  // degrees 0–360 (direction from us to storm)
+  // Raw API icon string ('clear-day', 'cloudy', 'partly-cloudy-day', 'fog', etc).
+  // Used to render the hero badge with cloud-cover accuracy that minute-level
+  // precip data alone can't provide.
+  icon?: string;
 }
 
 export interface LocationInfo {

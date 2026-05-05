@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { CondIcon } from '../components/Icons';
+import { CondIcon, IconCloudy, IconPartlyCloudy, IconFog } from '../components/Icons';
 import { getStyle, timeLabel } from '../weather';
 import type { MinuteForecast, HourlyForecast, CurrentConditions, Settings, WeatherAlert } from '../types';
 
@@ -43,7 +43,7 @@ function formatAge(d: Date): string {
 
 function hourLabel(d: Date): string {
   const h = d.getHours() % 12 || 12;
-  return `${h}${d.getHours() < 12 ? 'a' : 'p'}`;
+  return `${h}${d.getHours() < 12 ? 'am' : 'pm'}`;
 }
 
 function shortTime(d: Date): string {
@@ -104,6 +104,30 @@ export function HomeScreen({
     return best;
   })();
   const cs = getStyle(effectiveCondition, current.precip);
+
+  // When the effective condition is dry (clear/clearing), the minute-level
+  // forecast doesn't actually know about cloud cover — it just knows there's
+  // no precipitation. The API's icon string does carry that info, so we use
+  // it to render an honest badge ("Cloudy" / "Partly cloudy" / "Fog") instead
+  // of always showing a sun. Only overrides the badge label and icons; the
+  // theme, animations, and timeline keep using effectiveCondition.
+  const apiIcon = currentConditions?.icon;
+  const isDryEffective = effectiveCondition === 'clear' || effectiveCondition === 'clearing';
+  const skyOverride: { label: string; kind: 'cloudy' | 'partly_cloudy' | 'fog' } | null = (() => {
+    if (!isDryEffective || !apiIcon) return null;
+    if (apiIcon === 'cloudy') return { label: 'Cloudy', kind: 'cloudy' };
+    if (apiIcon === 'partly-cloudy-day' || apiIcon === 'partly-cloudy-night') return { label: 'Partly cloudy', kind: 'partly_cloudy' };
+    if (apiIcon === 'fog') return { label: 'Fog', kind: 'fog' };
+    return null;
+  })();
+  const heroLabel = skyOverride?.label ?? cs.label;
+  const renderHeroIcon = (size: number, color: string) => {
+    if (skyOverride?.kind === 'cloudy')        return <IconCloudy size={size} color={color} />;
+    if (skyOverride?.kind === 'partly_cloudy') return <IconPartlyCloudy size={size} color={color} />;
+    if (skyOverride?.kind === 'fog')           return <IconFog size={size} color={color} />;
+    return <CondIcon condition={effectiveCondition} size={size} color={color} />;
+  };
+
   const timelineRef = useRef<HTMLDivElement>(null);
   const [hoveredMin, setHoveredMin] = useState<number | null>(null);
   const [leaveMin, setLeaveMin] = useState<number | null>(null);
@@ -219,7 +243,7 @@ export function HomeScreen({
   // 2-3 upcoming opportunities to be outside (run, dog walk, errand).
   // The first window's start is clamped to "now" if we're already in it.
   const outdoorWindows = (() => {
-    type Window = { start: Date; end: Date; durationMin: number };
+    type Window = { start: Date; end: Date; durationMin: number; minTempF: number; maxTempF: number };
     const windows: Window[] = [];
     if (!hourlyForecast.length) return windows;
     const horizon = Math.min(14, hourlyForecast.length);
@@ -230,16 +254,18 @@ export function HomeScreen({
       while (i < horizon && !isHourWet(hourlyForecast[i])) i++;
       let start = hourlyForecast[startIdx].time;
       const now = new Date();
-      // If the window already started, anchor it to "now"
       if (start.getTime() < now.getTime()) start = now;
       const end = i < hourlyForecast.length
         ? hourlyForecast[i].time
         : new Date(hourlyForecast[i - 1].time.getTime() + 3_600_000);
       const durationMin = Math.round((end.getTime() - start.getTime()) / 60_000);
-      // Only show windows of at least 60 min — anything shorter isn't a
-      // meaningful planning slot
       if (durationMin >= 60 && end.getTime() > now.getTime()) {
-        windows.push({ start, end, durationMin });
+        const temps = hourlyForecast.slice(startIdx, i).map(h => h.temp);
+        windows.push({
+          start, end, durationMin,
+          minTempF: Math.min(...temps),
+          maxTempF: Math.max(...temps),
+        });
       }
     }
     return windows.slice(0, 3);
@@ -728,8 +754,8 @@ export function HomeScreen({
               background: darkMode ? cs.accent + '28' : cs.accent + '22', borderRadius: 7,
               padding: '5px 11px 5px 9px', marginBottom: 12, transition: 'background 0.8s',
             }}>
-              <CondIcon condition={effectiveCondition} size={14} color={cs.accent} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: t.condText, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{cs.label}</span>
+              {renderHeroIcon(14, cs.accent)}
+              <span style={{ fontSize: 12, fontWeight: 700, color: t.condText, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{heroLabel}</span>
             </div>
 
             <div style={{
@@ -751,10 +777,10 @@ export function HomeScreen({
                 <>
                   <span style={{ fontWeight: 500, color: t.text3 }}> · </span>
                   <span style={{ color: t.text1, fontWeight: 700 }}>feels {displayFeels}°</span>
-                  <span style={{ fontWeight: 500, color: t.text3 }}> · {humidity}%</span>
+                  <span style={{ fontWeight: 500, color: t.text3 }}> · {humidity}% humidity</span>
                 </>
               ) : (
-                <span style={{ fontWeight: 500, color: t.text3 }}> · feels {displayFeels}° · {humidity}%</span>
+                <span style={{ fontWeight: 500, color: t.text3 }}> · feels {displayFeels}° · {humidity}% humidity</span>
               )}
             </div>
 
@@ -788,7 +814,7 @@ export function HomeScreen({
               </svg>
             </button>
             <div style={{ opacity: 0.85 }}>
-              <CondIcon condition={effectiveCondition} size={48} color={cs.accent} />
+              {renderHeroIcon(48, cs.accent)}
             </div>
           </div>
         </div>
@@ -1105,16 +1131,24 @@ export function HomeScreen({
                 const durationStr = hours === 0 ? `${minsRem} min`
                   : minsRem === 0 ? `${hours} hr${hours > 1 ? 's' : ''}`
                   : `${hours}h ${minsRem}m`;
+                const minT = useCelsius ? fToC(w.minTempF) : Math.round(w.minTempF);
+                const maxT = useCelsius ? fToC(w.maxTempF) : Math.round(w.maxTempF);
+                const tempStr = minT === maxT ? `${minT}°` : `${minT}°–${maxT}°`;
                 return (
                   <div key={idx} style={{
                     display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
                     borderTop: idx > 0 ? `1px solid ${t.dividerSoft}` : 'none',
                   }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3d9e5f', flexShrink: 0 }} />
-                    <div style={{ fontSize: 14, fontWeight: 700, color: t.text1 }}>
-                      {startStr} → {endStr}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: t.text1 }}>
+                        {startStr} → {endStr}
+                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 500, color: t.text3, marginTop: 2 }}>
+                        {tempStr}
+                      </div>
                     </div>
-                    <div style={{ marginLeft: 'auto', fontSize: 12, fontWeight: 500, color: t.text3 }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: t.text3 }}>
                       {durationStr}
                     </div>
                   </div>

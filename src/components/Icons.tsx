@@ -74,6 +74,32 @@ export function IconSleet({ size = 28, color = 'currentColor' }: IconProps) {
   </svg>;
 }
 
+export function IconCloudy({ size = 28, color = 'currentColor' }: IconProps) {
+  return <svg width={size} height={size} viewBox="0 0 28 28" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 18a6 6 0 1 1 11.6-2.2A4.5 4.5 0 1 1 19 24H8a3.5 3.5 0 0 1-1-6.9"/>
+  </svg>;
+}
+
+export function IconPartlyCloudy({ size = 28, color = 'currentColor' }: IconProps) {
+  return <svg width={size} height={size} viewBox="0 0 28 28" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="9" cy="8" r="3"/>
+    <line x1="9" y1="2"  x2="9"  y2="3.5"/>
+    <line x1="2.5" y1="8" x2="4" y2="8"/>
+    <line x1="4.5" y1="3.5" x2="5.5" y2="4.5"/>
+    <line x1="13.5" y1="3.5" x2="12.5" y2="4.5"/>
+    <path d="M9 18a6 6 0 0 1 11.6-2.2A4.5 4.5 0 1 1 21 24H10a3.5 3.5 0 0 1-1-6.9"/>
+  </svg>;
+}
+
+export function IconFog({ size = 28, color = 'currentColor' }: IconProps) {
+  return <svg width={size} height={size} viewBox="0 0 28 28" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round">
+    <line x1="4"  y1="10" x2="24" y2="10"/>
+    <line x1="6"  y1="14" x2="22" y2="14"/>
+    <line x1="4"  y1="18" x2="24" y2="18"/>
+    <line x1="7"  y1="22" x2="21" y2="22"/>
+  </svg>;
+}
+
 export function CondIcon({ condition, size, color }: { condition: Condition; size?: number; color?: string }) {
   if (condition === 'rain')     return <IconRain size={size} color={color} />;
   if (condition === 'drizzle')  return <IconDrizzle size={size} color={color} />;
