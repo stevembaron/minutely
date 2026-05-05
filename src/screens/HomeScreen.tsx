@@ -385,7 +385,7 @@ export function HomeScreen({
   const displayWindUnit = useKph ? 'km/h' : 'mph';
   const displayVis      = useKph ? `${miToKm(visMi)}km` : `${visMi}mi`;
   const displayStormDist = stormDist != null
-    ? (useKph ? `${Math.round(stormDist * 1.60934)}km` : `${stormDist}mi`)
+    ? (useKph ? `${Math.round(stormDist * 1.60934)} km` : `${stormDist} miles`)
     : null;
   const tempUnit        = settings.tempUnit;
 
@@ -768,7 +768,7 @@ export function HomeScreen({
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 700, color: t.text1 }}>
-                Storm {displayStormDist} {stormDir}
+                {displayStormDist} {stormDir}
               </div>
               <div style={{ fontSize: 12, fontWeight: 500, color: t.text3, marginTop: 1 }}>
                 {stormMovement === 'approaching' ? 'Approaching — monitor conditions'
