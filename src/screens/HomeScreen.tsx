@@ -473,7 +473,7 @@ export function HomeScreen({
   const pressureQual = pressureMb == null ? null
     : pressureMb < 1000 ? 'Low'
     : pressureMb > 1022 ? 'High'
-    : 'Normal';
+    : 'Stable';
   const pressureArrow = pressureTrend?.direction === 'rising'  ? ' ↑'
                       : pressureTrend?.direction === 'falling' ? ' ↓' : '';
   const pressureValue = pressureQual != null ? `${pressureQual}${pressureArrow}` : '—';
