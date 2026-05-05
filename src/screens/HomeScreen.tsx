@@ -468,18 +468,20 @@ export function HomeScreen({
     return 'nearby';
   })();
 
-  // ── Pressure label. inHg in imperial, hPa/mb elsewhere.
-  const pressureArrow = pressureTrend?.direction === 'rising' ? '↑'
-                       : pressureTrend?.direction === 'falling' ? '↓'
-                       : pressureTrend?.direction === 'steady' ? '→' : '';
-  const pressureFormatted = pressureMb != null
-    ? (useKph ? `${pressureMb}` : (pressureMb / 33.8639).toFixed(2))
-    : null;
-  const pressureUnit = useKph ? 'mb' : 'inHg';
-  const pressureValue = pressureFormatted != null ? `${pressureArrow}${pressureFormatted}` : '—';
+  // ── Pressure: qualitative label + trend arrow. Pirate Weather returns
+  // sea-level hPa so no altitude correction needed.
+  const pressureQual = pressureMb == null ? null
+    : pressureMb < 1000 ? 'Low'
+    : pressureMb > 1022 ? 'High'
+    : 'Normal';
+  const pressureArrow = pressureTrend?.direction === 'rising'  ? ' ↑'
+                      : pressureTrend?.direction === 'falling' ? ' ↓' : '';
+  const pressureValue = pressureQual != null ? `${pressureQual}${pressureArrow}` : '—';
   const pressureSubLabel = pressureTrend
-    ? `${pressureTrend.direction === 'steady' ? 'Steady' : pressureTrend.direction}${pressureTrend.rate === 'fast' ? ' fast' : ''}`
-    : pressureUnit;
+    ? (pressureTrend.direction === 'steady'
+        ? 'Steady'
+        : `${pressureTrend.direction === 'rising' ? 'Rising' : 'Falling'}${pressureTrend.rate === 'fast' ? ' fast' : ''}`)
+    : 'Pressure';
   const isRaining  = effectiveCondition === 'rain' || effectiveCondition === 'drizzle' || effectiveCondition === 'sleet';
   const isSnowing  = effectiveCondition === 'snow' || effectiveCondition === 'flurries';
   const dropCount  = effectiveCondition === 'rain' ? 22 : effectiveCondition === 'sleet' ? 16 : 13;
