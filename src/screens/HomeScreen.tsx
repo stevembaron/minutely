@@ -771,9 +771,9 @@ export function HomeScreen({
                 Storm {displayStormDist} {stormDir}
               </div>
               <div style={{ fontSize: 12, fontWeight: 500, color: t.text3, marginTop: 1 }}>
-                {stormMovement === 'approaching' ? 'Approaching from the ' + stormDir
-                  : stormMovement === 'moving away' ? 'Moving away to the ' + stormDir
-                  : 'Active storm cell to the ' + stormDir}
+                {stormMovement === 'approaching' ? 'Approaching — monitor conditions'
+                  : stormMovement === 'moving away' ? 'Moving away'
+                  : 'Passing nearby'}
               </div>
             </div>
           </div>
