@@ -1086,7 +1086,7 @@ export function HomeScreen({
         {outdoorWindows.length > 0 && (
           <div style={{ margin: '0 22px 18px' }}>
             <div style={{ fontSize: 12, color: t.text3, letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>
-              Outdoor windows
+              Dry stretches
             </div>
             <div style={{
               background: t.card, borderRadius: 14,
