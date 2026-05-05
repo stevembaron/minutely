@@ -252,6 +252,7 @@ export async function fetchLiveData(lat: number, lng: number): Promise<LiveData 
         precip: mmToIntensity(precipMm),
         temp: tempF,
         precipProb: Math.round((h.precipProbability ?? 0) * 100),
+        precipMmPerHour: precipMm,
       };
     });
 

@@ -550,6 +550,29 @@ export function HomeScreen({
     return 'nearby';
   })();
 
+  // ── Rain accumulation outlook: probability-weighted total over the next
+  // ~12h. Suppresses noise (< 0.05 in) and surfaces the peak hour so users
+  // can tell drizzle-trickle from heavy-dump.
+  const rainOutlook = (() => {
+    if (!hourlyForecast.length) return null;
+    const next = hourlyForecast.slice(0, 12);
+    let totalMm = 0;
+    let peakWeighted = 0;
+    let peakTime: Date | null = null;
+    for (const h of next) {
+      const mm = h.precipMmPerHour ?? 0;
+      const weighted = mm * (h.precipProb / 100);
+      totalMm += weighted;
+      if (weighted > peakWeighted) { peakWeighted = weighted; peakTime = h.time; }
+    }
+    const totalIn = totalMm / 25.4;
+    if (useKph ? totalMm < 0.5 : totalIn < 0.05) return null;
+    const display = useKph
+      ? `${totalMm < 1 ? '< 1' : Math.round(totalMm)} mm`
+      : `${totalIn.toFixed(2)} in`;
+    return { display, peakTime };
+  })();
+
   // ── Pressure: only show the Low/High descriptor when extreme (the
   // mid-range case is the boring/default — the trend is what's actionable).
   // Pirate Weather returns sea-level hPa so no altitude correction needed.
@@ -832,6 +855,19 @@ export function HomeScreen({
           </div>
         )}
       </div>
+
+      {/* RAIN OUTLOOK — total expected precipitation in the next ~12h */}
+      {rainOutlook && (
+        <div style={{ margin: '12px 22px 0', padding: '10px 14px', background: t.subtleBg, borderRadius: 12, border: `1.5px solid ${t.cardBorder}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#4a6e94', flexShrink: 0 }} />
+          <div style={{ fontSize: 13, fontWeight: 600, color: t.text1 }}>
+            {rainOutlook.display} expected
+            {rainOutlook.peakTime && (
+              <span style={{ fontWeight: 500, color: t.text3 }}> · most around {shortTime(rainOutlook.peakTime)}</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* STORM TRACKER */}
       {showStorm && (

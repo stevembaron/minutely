@@ -51,6 +51,7 @@ export interface HourlyForecast {
   time: Date;
   condition: Condition;
   precip: number;     // 0–1 intensity
+  precipMmPerHour?: number; // raw mm/hr — used for accumulation totals
   temp: number;       // °F
   precipProb: number; // 0–100
 }
