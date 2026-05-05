@@ -1144,7 +1144,7 @@ export function HomeScreen({
                 { label: hasGusts ? 'Gusts' : 'Dew Pt',
                   value: hasGusts ? `${displayGust}` : `${dewDisplay}°`,
                   sub:   hasGusts ? displayWindUnit : settings.tempUnit },
-                { label: 'Press',  value: pressureValue,         sub: pressureSubLabel },
+                { label: 'Pressure', value: pressureValue,       sub: pressureSubLabel },
                 { label: 'Vis',    value: displayVis,            sub: '' },
               ];
               return (
