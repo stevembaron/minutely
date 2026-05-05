@@ -823,7 +823,10 @@ export function HomeScreen({
               </svg>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: t.text1 }}>
+              <div style={{ fontSize: 10, fontWeight: 800, color: '#b03020', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>
+                Storm cell
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: t.text1 }}>
                 {displayStormDist} {stormDir}
               </div>
               <div style={{ fontSize: 12, fontWeight: 500, color: t.text3, marginTop: 1 }}>
