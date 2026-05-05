@@ -394,7 +394,7 @@ export function HomeScreen({
     const wetOutlook = nextDryHourTime ? `Easing around ${shortTime(nextDryHourTime)}` : 'No dry break in the next hour';
     const dryOutlook = nextWetHourTime ? `Rain expected ${shortTime(nextWetHourTime)}` : 'No rain in the forecast';
     if (isDryCond(current.condition))
-      return { primary: `Clear for the next ${remaining} min`, secondary: sunHint ?? dryOutlook };
+      return { primary: `Dry for the next ${remaining} min`, secondary: sunHint ?? dryOutlook };
     if (current.condition === 'drizzle')
       return { primary: `Drizzle for the next ${remaining} min`, secondary: sunHint ?? wetOutlook };
     if (current.condition === 'rain')
@@ -463,7 +463,7 @@ export function HomeScreen({
   }
 
   const condLabelMap: Record<string, string> = {
-    rain: 'Rain', drizzle: 'Drizzle', clearing: 'Clearing', clear: 'Clear',
+    rain: 'Rain', drizzle: 'Drizzle', clearing: 'Clearing', clear: 'Dry',
     snow: 'Snow', flurries: 'Flurries', sleet: 'Sleet',
   };
   const baseDescMap: Record<string, string> = {
