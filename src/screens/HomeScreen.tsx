@@ -533,6 +533,32 @@ export function HomeScreen({
       : { text: `${diffDisplay}° cooler than yesterday`, sign: -1 };
   })();
 
+  // ── Daylight remaining: surface sunset/sunrise countdown so the user
+  // can plan around it without scrolling to the hourly view.
+  const daylightInfo = (() => {
+    if (!sunriseTime || !sunsetTime) return null;
+    const now = Date.now();
+    const fmtDur = (mins: number) => {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      if (h === 0) return `${m} min`;
+      if (m === 0) return `${h} hr${h > 1 ? 's' : ''}`;
+      return `${h}h ${m}m`;
+    };
+    if (now >= sunriseTime.getTime() && now < sunsetTime.getTime()) {
+      const minLeft = Math.round((sunsetTime.getTime() - now) / 60_000);
+      if (minLeft < 5) return null; // hero already shows imminent sunset hint
+      return `${fmtDur(minLeft)} of daylight · sunset ${shortTime(sunsetTime)}`;
+    }
+    // Sun is down — count down to next sunrise (today's, or tomorrow's if past)
+    const nextSr = sunriseTime.getTime() > now
+      ? sunriseTime
+      : new Date(sunriseTime.getTime() + 24 * 60 * 60 * 1000);
+    const minToSr = Math.round((nextSr.getTime() - now) / 60_000);
+    if (minToSr < 5) return null;
+    return `Sunrise in ${fmtDur(minToSr)} · ${shortTime(nextSr)}`;
+  })();
+
   // ── Storm tracker — only show when reasonably close
   const showStorm = stormDist != null && stormDist < 30 && stormBear != null;
   const stormDir = stormBear != null ? bearingToDir(stormBear) : '';
@@ -823,6 +849,11 @@ export function HomeScreen({
                 </span>
               )}
             </div>
+            {daylightInfo && (
+              <div style={{ fontSize: 12, fontWeight: 500, color: t.text4, marginTop: 3 }}>
+                {daylightInfo}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10, flexShrink: 0 }}>

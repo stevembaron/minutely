@@ -6,6 +6,19 @@ interface Props {
   darkMode?: boolean;
 }
 
+function FeatureChip({ icon, label, darkMode }: { icon: React.ReactNode; label: string; darkMode: boolean }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 7,
+      color: darkMode ? '#a8d4b6' : '#3d9e5f',
+      fontSize: 13, fontWeight: 600,
+    }}>
+      {icon}
+      <span style={{ color: darkMode ? '#c0c0c0' : '#3a3a3a' }}>{label}</span>
+    </div>
+  );
+}
+
 export function WelcomeScreen({ onGeolocate, onPickCity, darkMode = false }: Props) {
   const [requesting, setRequesting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +75,25 @@ export function WelcomeScreen({ onGeolocate, onPickCity, darkMode = false }: Pro
         <p style={{ fontSize: 16, fontWeight: 500, color: text2, lineHeight: 1.5, maxWidth: 320, margin: '4px 0 0' }}>
           Minute-by-minute precipitation, leave-at planner, and severe-weather alerts — focused on right now, not five days out.
         </p>
+
+        <div style={{ display: 'flex', gap: 18, marginTop: 14, justifyContent: 'center', flexWrap: 'wrap', maxWidth: 360 }}>
+          <FeatureChip darkMode={darkMode} icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/>
+            </svg>
+          } label="Minute-level" />
+          <FeatureChip darkMode={darkMode} icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          } label="Severe alerts" />
+          <FeatureChip darkMode={darkMode} icon={
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 2v6M12 22v-2M5 12H2M22 12h-3M19 5l-2.1 2.1M5 19l2.1-2.1M5 5l2.1 2.1M19 19l-2.1-2.1"/>
+            </svg>
+          } label="No clutter" />
+        </div>
       </div>
 
       {/* Bottom CTA stack */}
