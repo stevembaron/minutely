@@ -200,6 +200,16 @@ export default function App() {
   const isMobile = typeof window !== 'undefined' && (
     window.innerWidth <= 480 || window.matchMedia('(pointer: coarse)').matches
   );
+  // Wide desktop: render the home screen in a 2-column dashboard layout
+  const [wide, setWide] = useState(() =>
+    typeof window !== 'undefined' && !isMobile && window.innerWidth >= 880
+  );
+  useEffect(() => {
+    if (isMobile) return;
+    const onResize = () => setWide(window.innerWidth >= 880);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [isMobile]);
   const frameRef = useRef<HTMLDivElement>(null);
 
   const showWelcome = !onboarded;
@@ -249,6 +259,7 @@ export default function App() {
           yesterdayTemp={yesterdayTemp}
           pressureTrend={pressureTrend}
           alerts={alerts}
+          wide={wide && screen === 'home'}
         />
       )}
       {!showWelcome && screen === 'settings' && (
@@ -298,62 +309,48 @@ export default function App() {
     );
   }
 
-  // Desktop: render as a proper web page — page header with brand, centered
-  // content card, footer with attribution. The card preserves the mobile
-  // layout width (~460px) so existing components don't need redesign.
+  // Desktop: real web page — content area grows with viewport. On wide
+  // screens the HomeScreen lays itself out in 2 columns (hero+timeline on
+  // the left, hourly+stats on the right). On narrow desktop windows it
+  // stays single-column but still uses the full content width.
   const pageBg    = darkMode ? '#0c0d12' : '#eeebe6';
   const cardBg    = darkMode ? '#111318' : '#f7f5f2';
   const cardBdr   = darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
-  const cardShdw  = darkMode ? '0 30px 70px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3)'
-                             : '0 24px 60px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)';
-  const text2     = darkMode ? '#c0c0c0' : '#3a3a3a';
+  const cardShdw  = darkMode ? '0 30px 70px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.3)'
+                             : '0 24px 60px rgba(0,0,0,0.07), 0 2px 6px rgba(0,0,0,0.04)';
   const text3     = darkMode ? '#8a8a8a' : '#6a6a6a';
-  const accent    = '#3d9e5f';
+  // Home is the only "wide" screen — settings/locations/admin are
+  // single-column flows and look right at the narrow card width.
+  const isHomeWide = wide && screen === 'home' && !showWelcome;
+  const cardWidth  = isHomeWide ? 980 : 460;
 
   return (
     <div style={{
       minHeight: '100vh', width: '100%',
       background: pageBg,
       fontFamily: 'DM Sans, -apple-system, system-ui, sans-serif',
-      color: text2,
       display: 'flex', flexDirection: 'column', alignItems: 'center',
-      padding: '36px 20px 28px',
+      padding: '28px 20px 24px',
     }}>
-      {/* Page header — brand wordmark + tagline */}
-      <header style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginBottom: 22 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, opacity: 0.35 }} />
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: accent, opacity: 0.65 }} />
-            <div style={{ width: 10, height: 10, borderRadius: '50%', background: accent }} />
-          </div>
-          <span style={{ fontSize: 22, fontWeight: 700, color: accent, letterSpacing: '-0.025em', marginLeft: 2 }}>soon</span>
-        </div>
-        <div style={{ fontSize: 13, fontWeight: 500, color: text3, letterSpacing: '-0.005em' }}>
-          Weather for the next hour.
-        </div>
-      </header>
-
-      {/* App card — preserves the mobile content size and internal scroll */}
       <main style={{
-        width: '100%', maxWidth: 460,
-        height: 'min(840px, calc(100vh - 200px))', minHeight: 560,
-        borderRadius: 22, overflow: 'hidden',
+        width: '100%', maxWidth: cardWidth,
+        minHeight: isHomeWide ? undefined : 'min(840px, calc(100vh - 100px))',
+        borderRadius: 18, overflow: 'hidden',
         background: cardBg,
         boxShadow: cardShdw,
         border: `1px solid ${cardBdr}`,
         position: 'relative',
+        transition: 'max-width 0.2s ease',
       }}>
         {content}
       </main>
 
-      {/* Footer — attribution + install hint */}
       <footer style={{
-        marginTop: 18, textAlign: 'center',
+        marginTop: 16, textAlign: 'center',
         fontSize: 11, fontWeight: 500, color: text3, lineHeight: 1.6,
-        maxWidth: 460,
+        maxWidth: cardWidth,
       }}>
-        Powered by Pirate Weather · Open-source forecasting · No tracking.
+        soon · Weather for the next hour · Powered by Pirate Weather
       </footer>
     </div>
   );

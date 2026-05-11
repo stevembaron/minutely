@@ -22,6 +22,7 @@ interface Props {
   yesterdayTemp: number | null; // °F, internal unit
   pressureTrend: { direction: 'rising' | 'falling' | 'steady'; rate: 'fast' | 'normal' } | null;
   alerts: WeatherAlert[];
+  wide?: boolean;  // desktop 2-column layout
 }
 
 function buzz(ms = 10) {
@@ -79,7 +80,7 @@ type HourlyItem =
 export function HomeScreen({
   onSettings, nowMin, setNowMin, forecast, hourlyForecast, sunriseTime, sunsetTime,
   location, currentConditions, settings, lastUpdated, refreshing, fetchError, onRefresh, darkMode,
-  yesterdayTemp, pressureTrend, alerts,
+  yesterdayTemp, pressureTrend, alerts, wide = false,
 }: Props) {
   const [expandedAlertIdx, setExpandedAlertIdx] = useState<number | null>(null);
   const current = forecast[nowMin];
@@ -623,10 +624,13 @@ export function HomeScreen({
 
   return (
     <div style={{
-      width: '100%', height: '100%',
+      width: '100%',
+      height: wide ? 'auto' : '100%',
+      minHeight: wide ? 'auto' : undefined,
       background: timeOfDayBackground(cs.bg, cs.bgDark, darkMode),
       transition: 'background 0.9s ease',
-      overflow: 'hidden', position: 'relative',
+      overflow: wide ? 'visible' : 'hidden',
+      position: 'relative',
     }}>
 
       {/* RAIN ANIMATION OVERLAY */}
@@ -693,14 +697,21 @@ export function HomeScreen({
         </div>
       )}
 
-      {/* SCROLL CONTAINER — entire screen scrolls as one */}
+      {/* SCROLL CONTAINER — single column with internal scroll on mobile/narrow;
+          2-column CSS grid that hands scroll to the page on wide desktop */}
       <div
         ref={scrollRef}
         onTouchStart={handlePullStart}
         onTouchMove={handlePullMove}
         onTouchEnd={handlePullEnd}
         onTouchCancel={handlePullEnd}
-        style={{
+        style={wide ? {
+          position: 'relative', zIndex: 1,
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          columnGap: 8,
+          paddingBottom: 28,
+        } : {
           position: 'relative', zIndex: 1, height: '100%',
           overflowY: 'auto', overflowX: 'hidden',
           WebkitOverflowScrolling: 'touch',
@@ -710,7 +721,7 @@ export function HomeScreen({
       }}>
 
       {/* HEADER */}
-      <div style={{ padding: 'var(--top-safe) 22px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ padding: 'var(--top-safe) 22px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gridColumn: wide ? '1 / -1' : undefined }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 4 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
@@ -738,7 +749,7 @@ export function HomeScreen({
 
       {/* SEVERE WEATHER ALERTS */}
       {alerts.length > 0 && (
-        <div style={{ margin: '14px 22px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ margin: '14px 22px 0', display: 'flex', flexDirection: 'column', gap: 8, gridColumn: wide ? '1 / -1' : undefined }}>
           {alerts.map((alert, idx) => {
             const isExpanded = expandedAlertIdx === idx;
             const palette = alert.severity === 'warning'
@@ -796,6 +807,9 @@ export function HomeScreen({
           })}
         </div>
       )}
+
+      {/* LEFT COLUMN (wide) — hero through leave callout */}
+      <div style={wide ? { gridColumn: 1, minWidth: 0 } : { display: 'contents' }}>
 
       {/* HERO — leads with the timing decision, temp is supporting */}
       <div style={{ padding: '20px 22px 0', position: 'relative', zIndex: 1 }}>
@@ -1178,8 +1192,15 @@ export function HomeScreen({
         );
       })()}
 
-      {/* LOWER SECTION (now part of single page scroll) */}
-      <div style={{ paddingBottom: 'var(--bottom-safe)', marginTop: 18 }}>
+      </div>{/* /LEFT COLUMN */}
+
+      {/* LOWER SECTION (now part of single page scroll) — right column on wide */}
+      <div style={{
+        paddingBottom: 'var(--bottom-safe)',
+        marginTop: wide ? 0 : 18,
+        gridColumn: wide ? 2 : undefined,
+        minWidth: wide ? 0 : undefined,
+      }}>
 
         {/* OUTDOOR WINDOWS — runs of dry hours over the next ~12h */}
         {outdoorWindows.length > 0 && (
