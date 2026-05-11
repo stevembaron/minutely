@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { IOSDevice } from './components/IOSDevice';
 import { HomeScreen } from './screens/HomeScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
 import { LocationScreen } from './screens/LocationScreen';
@@ -299,9 +298,63 @@ export default function App() {
     );
   }
 
+  // Desktop: render as a proper web page — page header with brand, centered
+  // content card, footer with attribution. The card preserves the mobile
+  // layout width (~460px) so existing components don't need redesign.
+  const pageBg    = darkMode ? '#0c0d12' : '#eeebe6';
+  const cardBg    = darkMode ? '#111318' : '#f7f5f2';
+  const cardBdr   = darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+  const cardShdw  = darkMode ? '0 30px 70px rgba(0,0,0,0.45), 0 2px 6px rgba(0,0,0,0.3)'
+                             : '0 24px 60px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04)';
+  const text2     = darkMode ? '#c0c0c0' : '#3a3a3a';
+  const text3     = darkMode ? '#8a8a8a' : '#6a6a6a';
+  const accent    = '#3d9e5f';
+
   return (
-    <IOSDevice dark={darkMode}>
-      {content}
-    </IOSDevice>
+    <div style={{
+      minHeight: '100vh', width: '100%',
+      background: pageBg,
+      fontFamily: 'DM Sans, -apple-system, system-ui, sans-serif',
+      color: text2,
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '36px 20px 28px',
+    }}>
+      {/* Page header — brand wordmark + tagline */}
+      <header style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, marginBottom: 22 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+            <div style={{ width: 6, height: 6, borderRadius: '50%', background: accent, opacity: 0.35 }} />
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: accent, opacity: 0.65 }} />
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: accent }} />
+          </div>
+          <span style={{ fontSize: 22, fontWeight: 700, color: accent, letterSpacing: '-0.025em', marginLeft: 2 }}>soon</span>
+        </div>
+        <div style={{ fontSize: 13, fontWeight: 500, color: text3, letterSpacing: '-0.005em' }}>
+          Weather for the next hour.
+        </div>
+      </header>
+
+      {/* App card — preserves the mobile content size and internal scroll */}
+      <main style={{
+        width: '100%', maxWidth: 460,
+        height: 'min(840px, calc(100vh - 200px))', minHeight: 560,
+        borderRadius: 22, overflow: 'hidden',
+        background: cardBg,
+        boxShadow: cardShdw,
+        border: `1px solid ${cardBdr}`,
+        position: 'relative',
+      }}>
+        {content}
+      </main>
+
+      {/* Footer — attribution + install hint */}
+      <footer style={{
+        marginTop: 18, textAlign: 'center',
+        fontSize: 11, fontWeight: 500, color: text3, lineHeight: 1.6,
+        maxWidth: 460,
+      }}>
+        Powered by Pirate Weather · Open-source forecasting · No tracking.
+      </footer>
+    </div>
   );
 }

@@ -1,45 +1,40 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
-  width: 100%; height: 100%;
-  background: #e0e0e0;
-  display: flex; align-items: center; justify-content: center;
+  width: 100%; min-height: 100%;
+  background: #eeebe6;
   font-family: 'DM Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-text-size-adjust: 100%;
   text-rendering: optimizeLegibility;
 }
-#root { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+#root { width: 100%; min-height: 100vh; }
 button, input { -webkit-tap-highlight-color: transparent; }
 
 /*
   Safe-area CSS variables.
-  Mobile (touch / pointer:coarse): use the actual env() insets with a small minimum
-  for breathing room. The browser chrome already positions the viewport below the
-  URL bar so env(safe-area-inset-top) may be 0 in Safari browser mode — a 16px
-  fallback keeps things off the edge.
-  Desktop inside IOSDevice frame: env() is 0, so we hardcode 54px to clear the
-  simulated status bar + Dynamic Island.
+  Mobile (touch / pointer:coarse): use the actual env() insets with a small
+  minimum so content doesn't ride the edges.
+  Desktop: no status bar to clear; small padding is enough.
 */
 :root {
   --top-safe: max(env(safe-area-inset-top), 16px);
   --bottom-safe: max(env(safe-area-inset-bottom), 16px);
 }
 
-/* Desktop mouse/trackpad users get the IOSDevice frame — fixed insets */
 @media (hover: hover) and (pointer: fine) {
   :root {
-    --top-safe: 54px;
-    --bottom-safe: 20px;
+    --top-safe: 18px;
+    --bottom-safe: 16px;
   }
 }
 
 @media (max-width: 480px) {
   html, body { background: #f7f5f2; }
-  #root { align-items: flex-start; }
+  #root { display: flex; align-items: flex-start; }
 }
 
 @media (prefers-color-scheme: dark) {
-  html, body { background: #111318; }
+  html, body { background: #0c0d12; }
   @media (max-width: 480px) {
     html, body { background: #111318; }
   }
